@@ -25,6 +25,8 @@ Il est possible de consulter les déploiements effectués par un utilisateur.
 # Technique
 Je veux que les événements soient gérés de manière asynchrone en utilisant un système type socket ou sse (Server-Sent Events) pour permettre une communication en temps réel entre le serveur et le client. Cela permettra de mettre à jour l'interface utilisateur en temps réel avec les logs du déploiement et les notifications de succès ou d'échec, offrant ainsi une expérience utilisateur fluide et réactive.
 
+Migration SQL avec flyway. Initialisation avec Flyway.
+
 Utilisateur défini par:
 - id (UUID)
 - email (String)
