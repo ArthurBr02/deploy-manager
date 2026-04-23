@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #fafaf8;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .dm-spin {
+    @apply inline-block rounded-full border-2 border-warm-border border-t-accent animate-spin;
+    width: 14px;
+    height: 14px;
+  }
+  .dm-term {
+    background: #13120f;
+    color: #e7e5df;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}

@@ -6,57 +6,57 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 ## Phase 1 : Fondations et Sécurité
 
 ### Sprint 1 : Initialisation des projets et Base de données
-- [ ] Initialisation projet Spring Boot
-- [ ] Initialisation projet Vue.js + Tailwind
-- [ ] Configuration de PostgreSQL et scripts de migration
-- [ ] Configuration variables d'environnement
+- [x] Initialisation projet Spring Boot (Java 21, Spring Boot 3.3, Maven)
+- [x] Initialisation projet Vue.js + Tailwind
+- [x] Configuration de PostgreSQL et scripts de migration (Flyway V1/V2/V3)
+- [x] Configuration variables d'environnement (application.yml)
 
 ### Sprint 2 : Authentification et Gestion de profil
-- [ ] Implémentation Spring Security + hachage Argon2
-- [ ] Endpoints Auth (Login, Refresh, Reset) + admin initial
-- [ ] Implémentation UI (Login, Layout, Store Pinia Axios)
-- [ ] UI Page Profil (modification infos)
+- [x] Implémentation Spring Security + hachage Argon2
+- [x] Endpoints Auth (Login, Refresh, Logout, ForgotPassword, ResetPassword) + admin initial (AdminInitializer)
+- [x] Implémentation UI (Login, Layout, Store Pinia Axios)
+- [x] UI Page Profil (modification infos)
 
 ## Phase 2 : Gestion des Utilisateurs et des Hôtes
 
 ### Sprint 3 : Administration des utilisateurs
-- [ ] Endpoints CRUD Users (soft delete)
-- [ ] UI Liste utilisateurs et formulaires d'édition
+- [x] Endpoints CRUD Users (soft delete, gestion profil, changement mot de passe)
+- [x] UI Liste utilisateurs et formulaires d'édition
 
 ### Sprint 4 : Gestion des Hôtes et des Permissions
-- [ ] Migrations `Host` et `UserHostPermission`
-- [ ] Endpoints CRUD Hosts et assignation permissions
-- [ ] UI Liste des hôtes selon droits
-- [ ] UI Édition hôte et permissions utilisateur
+- [x] Migrations `Host` et `UserHostPermission`
+- [x] Endpoints CRUD Hosts et assignation permissions (+ import Ansible)
+- [x] UI Liste des hôtes selon droits
+- [x] UI Édition hôte et permissions utilisateur
 
 ### Sprint 5 : Configuration globale et Import Ansible
-- [ ] Endpoints `AppConfig`
-- [ ] Logique d'import fichier `hosts-all`
-- [ ] UI Page paramètres et import
+- [x] Endpoints `AppConfig` (GET/PUT /admin/settings)
+- [x] Logique d'import fichier `hosts-all` (Ansible inventory parser)
+- [x] UI Page paramètres et import
 
 ## Phase 3 : Moteur de Déploiement
 
 ### Sprint 6 : Logique d'exécution des déploiements
-- [ ] Migration `Deployment`
-- [ ] Service exécution Shell et remplacement variables
-- [ ] Gestion statut et blocage appels concurrents
+- [x] Migration `Deployment`
+- [x] Service exécution Shell et remplacement variables ({host}, {ip}, {domain})
+- [x] Gestion statut et blocage appels concurrents (existsByHostIdAndStatus)
 
 ### Sprint 7 : Temps réel (SSE), Logs et Timeout
-- [ ] SSE pour streaming des logs
-- [ ] Persistance des logs (fichier puis BDD)
-- [ ] Gestion Timeout (job planifié) et annulation (kill shell)
-- [ ] UI Modale de lancement et Console SSE en direct
+- [x] SSE pour streaming des logs (SseEmitter, CopyOnWriteArrayList)
+- [x] Persistance des logs (fichier .log puis BDD)
+- [x] Gestion Timeout (job planifié @Scheduled) et annulation (destroyForcibly)
+- [x] UI Modale de lancement et Console SSE en direct
 
 ## Phase 4 : Historique et Finalisation (v1)
 
 ### Sprint 8 : Historique et UI
-- [ ] Endpoints historique (pagination, filtres)
-- [ ] UI Page globale historique
-- [ ] UI Notifications Toasts fin de déploiement
+- [x] Endpoints historique (pagination JPA Specification, filtres hostId/status/type)
+- [x] UI Page globale historique
+- [x] UI Notifications Toasts fin de déploiement
 
 ### Sprint 9 : Tests, Corrections et Déploiement
-- [ ] Sécurité et tests
-- [ ] Dockerisation
+- [ ] Sécurité et tests unitaires
+- [x] Dockerisation (Dockerfile back/front, docker-compose, nginx.conf, .env.example)
 
 ## Phase 5 : Serveur MCP (v2)
 

@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: deploy-manager
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/deploymanager}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:25}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+app:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:very-long-secret-key-for-access-token-please-change-in-production-min-32chars}
+    refresh-secret: ${JWT_REFRESH_SECRET:very-long-secret-key-for-refresh-token-please-change-in-production-min-32chars}
+    access-expiry: ${JWT_ACCESS_EXPIRY:15m}
+    refresh-expiry: ${JWT_REFRESH_EXPIRY:7d}
+  admin:
+    email: ${ADMIN_EMAIL:admin@example.com}
+    password: ${ADMIN_PASSWORD:Admin1234!}
+  log-dir: ${LOG_DIR:./logs/deployments}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
