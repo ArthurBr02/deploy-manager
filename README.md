@@ -26,9 +26,11 @@ docker-compose up --build
 
 | Service | URL |
 |---|---|
-| Application | http://localhost |
+| Application | http://localhost:3000 |
 | API | http://localhost:8080/api |
 | Swagger UI | http://localhost:8080/api/swagger-ui.html |
+
+Le port du frontend est configurable via `FRONTEND_PORT` dans `.env` (défaut : `3000`).
 
 ---
 
@@ -99,6 +101,7 @@ Copiez `.env.example` en `.env` et adaptez les valeurs.
 | `ADMIN_EMAIL` | `admin@example.com` | Email du premier admin |
 | `ADMIN_PASSWORD` | `Admin1234!` | Mot de passe du premier admin |
 | `LOG_DIR` | `./logs/deployments` | Répertoire des fichiers de logs |
+| `FRONTEND_PORT` | `3000` | Port exposé du frontend (Docker) |
 
 ---
 
