@@ -22,27 +22,31 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
-import api from '@/api/axios'
+<script>
+import authService from '@/services/authService'
 
-const route = useRoute()
-const password = ref('')
-const loading = ref(false)
-const error = ref('')
-const done = ref(false)
-
-async function submit() {
-  loading.value = true
-  error.value = ''
-  try {
-    await api.post('/auth/reset-password', { token: route.query.token, newPassword: password.value })
-    done.value = true
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Token invalide'
-  } finally {
-    loading.value = false
-  }
+export default {
+  data() {
+    return {
+      password: '',
+      loading: false,
+      error: '',
+      done: false,
+    }
+  },
+  methods: {
+    async submit() {
+      this.loading = true
+      this.error = ''
+      try {
+        await authService.resetPassword(this.$route.query.token, this.password)
+        this.done = true
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Token invalide'
+      } finally {
+        this.loading = false
+      }
+    },
+  },
 }
 </script>

@@ -4,7 +4,10 @@
       <h1 class="text-base font-semibold text-gray-900">Paramètres</h1>
     </header>
     <div class="flex-1 overflow-auto p-6">
-      <div class="max-w-2xl mx-auto space-y-6">
+      <div v-if="pageLoading" class="flex items-center justify-center py-20">
+        <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div v-else class="max-w-2xl mx-auto space-y-6">
         <!-- General -->
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <h2 class="font-semibold text-gray-900">Général</h2>
@@ -51,13 +54,21 @@
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <h2 class="font-semibold text-gray-900">Import Ansible</h2>
           <p class="text-sm text-gray-500">Importer un fichier <code class="font-mono text-xs bg-warm-muted px-1 rounded">hosts-all</code> pour mettre à jour les hôtes existants.</p>
-          <div class="border-2 border-dashed border-warm-border rounded-lg p-6 text-center">
-            <UploadIcon class="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p class="text-sm text-gray-500 mb-3">Glissez un fichier hosts-all ici ou</p>
-            <label class="cursor-pointer">
-              <input type="file" @change="handleFile" class="hidden" />
-              <span class="px-4 py-2 border border-warm-border rounded-md text-sm bg-white hover:bg-warm-muted">Parcourir</span>
-            </label>
+          <div
+            class="border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer"
+            :class="isDragging ? 'border-accent bg-accent/5' : 'border-warm-border hover:border-gray-400'"
+            @dragover.prevent
+            @dragenter.prevent="onDragEnter"
+            @dragleave.prevent="onDragLeave"
+            @drop.prevent="handleDrop"
+            @click="triggerFilePicker"
+          >
+            <UploadIcon class="w-8 h-8 mx-auto mb-2" :class="isDragging ? 'text-accent' : 'text-gray-300'" />
+            <p class="text-sm text-gray-500 mb-3">
+              {{ isDragging ? 'Relâchez pour importer' : 'Glissez un fichier hosts-all ici ou' }}
+            </p>
+            <span v-if="!isDragging" class="px-4 py-2 border border-warm-border rounded-md text-sm bg-white hover:bg-warm-muted pointer-events-none">Parcourir</span>
+            <input ref="fileInputRef" type="file" @change="handleFile" class="hidden" />
           </div>
           <div v-if="importResult" class="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-sm text-green-700">
             Import terminé : {{ importResult.updated }} hôte(s) mis à jour, {{ importResult.skipped }} ignoré(s).
@@ -76,55 +87,90 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import api from '@/api/axios'
+<script>
+import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
+import adminSettingsService from '@/services/adminSettingsService'
+import hostsService from '@/services/hostsService'
 import { UploadIcon } from '@/components/icons'
 
-const toastStore = useToastStore()
-const settings = reactive({
-  default_deploy_command: 'sh /root/{host}/liv.sh',
-  default_timeout: '10',
-  smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: ''
-})
-const saving = ref(false)
-const saveError = ref('')
-const importResult = ref(null)
-const importError = ref('')
-
-async function load() {
-  const res = await api.get('/admin/settings')
-  Object.assign(settings, res.data.settings)
+export default {
+  components: { UploadIcon },
+  computed: {
+    ...mapStores(useToastStore),
+  },
+  data() {
+    return {
+      settings: {
+        default_deploy_command: 'sh /root/{host}/liv.sh',
+        default_timeout: '10',
+        smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
+      },
+      pageLoading: false,
+      saving: false,
+      saveError: '',
+      importResult: null,
+      importError: '',
+      isDragging: false,
+      dragCounter: 0,
+    }
+  },
+  mounted() {
+    this.load()
+  },
+  methods: {
+    async load() {
+      this.pageLoading = true
+      try {
+        const res = await adminSettingsService.get()
+        Object.assign(this.settings, res.data.settings)
+      } finally {
+        this.pageLoading = false
+      }
+    },
+    async save() {
+      this.saving = true
+      this.saveError = ''
+      try {
+        await adminSettingsService.update({ ...this.settings })
+        this.toastStore.success('Paramètres enregistrés')
+      } catch (e) {
+        this.saveError = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.saving = false
+      }
+    },
+    onDragEnter() {
+      this.dragCounter++
+      this.isDragging = true
+    },
+    onDragLeave() {
+      this.dragCounter--
+      if (this.dragCounter === 0) this.isDragging = false
+    },
+    triggerFilePicker() {
+      this.$refs.fileInputRef?.click()
+    },
+    handleDrop(event) {
+      this.dragCounter = 0
+      this.isDragging = false
+      const file = event.dataTransfer.files[0]
+      if (file) this.uploadFile(file)
+    },
+    handleFile(event) {
+      const file = event.target.files[0]
+      if (file) this.uploadFile(file)
+    },
+    async uploadFile(file) {
+      this.importResult = null
+      this.importError = ''
+      try {
+        const res = await hostsService.importAnsible(file)
+        this.importResult = res.data
+      } catch (e) {
+        this.importError = e.response?.data?.error || "Erreur lors de l'import"
+      }
+    },
+  },
 }
-
-async function save() {
-  saving.value = true
-  saveError.value = ''
-  try {
-    await api.put('/admin/settings', { settings: { ...settings } })
-    toastStore.success('Paramètres enregistrés')
-  } catch (e) {
-    saveError.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    saving.value = false
-  }
-}
-
-async function handleFile(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  importResult.value = null
-  importError.value = ''
-  const formData = new FormData()
-  formData.append('file', file)
-  try {
-    const res = await api.post('/admin/hosts/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-    importResult.value = res.data
-  } catch (e) {
-    importError.value = e.response?.data?.error || "Erreur lors de l'import"
-  }
-}
-
-onMounted(load)
 </script>

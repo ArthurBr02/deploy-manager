@@ -8,9 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,6 +94,35 @@ public class UserService {
         }
         user.setPassword(passwordEncoder.encode(req.newPassword()));
         userRepository.save(user);
+    }
+
+    @Transactional
+    public UserResponse uploadAvatar(UUID id, MultipartFile file) {
+        if (file.isEmpty()) throw new RuntimeException("Fichier vide");
+        if (file.getSize() > 2 * 1024 * 1024) throw new RuntimeException("Avatar trop volumineux (max 2 Mo)");
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new RuntimeException("Le fichier doit être une image");
+        }
+        User user = userRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        try {
+            String base64 = Base64.getEncoder().encodeToString(file.getBytes());
+            user.setAvatar("data:" + contentType + ";base64," + base64);
+            userRepository.save(user);
+            return UserResponse.from(user);
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de la lecture du fichier");
+        }
+    }
+
+    @Transactional
+    public UserResponse deleteAvatar(UUID id) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        user.setAvatar(null);
+        userRepository.save(user);
+        return UserResponse.from(user);
     }
 
     private String generatePassword(int length) {

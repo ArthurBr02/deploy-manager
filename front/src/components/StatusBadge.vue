@@ -6,16 +6,21 @@
   </span>
 </template>
 
-<script setup>
-const props = defineProps({ status: String })
-
-const map = {
-  SUCCESS:     { cls: 'text-status-success bg-status-success-bg border-green-200',   label: 'Succès' },
-  FAILURE:     { cls: 'text-status-failure bg-status-failure-bg border-red-200',     label: 'Échec' },
+<script>
+const STATUS_MAP = {
+  SUCCESS:     { cls: 'text-status-success bg-status-success-bg border-green-200',    label: 'Succès' },
+  FAILURE:     { cls: 'text-status-failure bg-status-failure-bg border-red-200',      label: 'Échec' },
   IN_PROGRESS: { cls: 'text-status-progress bg-status-progress-bg border-yellow-200', label: 'En cours' },
-  PENDING:     { cls: 'text-status-pending bg-status-pending-bg border-gray-200',    label: 'En attente' },
+  PENDING:     { cls: 'text-status-pending bg-status-pending-bg border-gray-200',     label: 'En attente' },
   CANCELLED:   { cls: 'text-status-cancelled bg-status-cancelled-bg border-slate-200', label: 'Annulé' },
-  NEVER:       { cls: 'text-gray-500 bg-gray-50 border-gray-200',                    label: 'Jamais' },
+  NEVER:       { cls: 'text-gray-500 bg-gray-50 border-gray-200',                     label: 'Jamais' },
 }
-const { cls, label } = map[props.status] || map.NEVER
+
+export default {
+  props: { status: String },
+  computed: {
+    cls()   { return (STATUS_MAP[this.status] || STATUS_MAP.NEVER).cls },
+    label() { return (STATUS_MAP[this.status] || STATUS_MAP.NEVER).label },
+  },
+}
 </script>

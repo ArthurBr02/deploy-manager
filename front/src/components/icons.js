@@ -43,3 +43,4 @@ export const GlobeIcon = icon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="
 export const TerminalIcon = icon('<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>')
 export const RefreshIcon = icon('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>')
 export const StopIcon = icon('<rect x="4" y="4" width="16" height="16" rx="2"/>')
+export const DownloadIcon = icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>')

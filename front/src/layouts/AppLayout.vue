@@ -62,31 +62,36 @@
   </div>
 </template>
 
-<script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+<script>
+import { mapStores } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { ServerIcon, ClockIcon, UsersIcon, SettingsIcon, LogOutIcon } from '@/components/icons'
 
-const authStore = useAuthStore()
-const route = useRoute()
-
-const userInitials = computed(() => {
-  if (!authStore.user) return '?'
-  return ((authStore.user.firstName?.[0] || '') + (authStore.user.lastName?.[0] || '')).toUpperCase()
-})
-
-const navItems = [
-  { to: '/hosts', label: 'Hôtes', icon: ServerIcon },
-  { to: '/deployments', label: 'Déploiements', icon: ClockIcon },
-]
-
-const adminItems = [
-  { to: '/admin/users', label: 'Utilisateurs', icon: UsersIcon },
-  { to: '/admin/settings', label: 'Paramètres', icon: SettingsIcon },
-]
-
-function isActive(path) {
-  return route.path === path || route.path.startsWith(path + '/')
+export default {
+  components: { LogOutIcon },
+  computed: {
+    ...mapStores(useAuthStore),
+    userInitials() {
+      if (!this.authStore.user) return '?'
+      return ((this.authStore.user.firstName?.[0] || '') + (this.authStore.user.lastName?.[0] || '')).toUpperCase()
+    },
+    navItems() {
+      return [
+        { to: '/hosts', label: 'Hôtes', icon: ServerIcon },
+        { to: '/deployments', label: 'Déploiements', icon: ClockIcon },
+      ]
+    },
+    adminItems() {
+      return [
+        { to: '/admin/users', label: 'Utilisateurs', icon: UsersIcon },
+        { to: '/admin/settings', label: 'Paramètres', icon: SettingsIcon },
+      ]
+    },
+  },
+  methods: {
+    isActive(path) {
+      return this.$route.path === path || this.$route.path.startsWith(path + '/')
+    },
+  },
 }
 </script>

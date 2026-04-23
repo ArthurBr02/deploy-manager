@@ -8,7 +8,10 @@
       </button>
     </header>
     <div class="flex-1 overflow-auto p-6">
-      <div class="bg-white border border-warm-border rounded-xl overflow-hidden">
+      <div v-if="loading" class="flex items-center justify-center py-20">
+        <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div v-else class="bg-white border border-warm-border rounded-xl overflow-hidden">
         <table class="w-full text-sm">
           <thead class="bg-warm-muted border-b border-warm-border">
             <tr>
@@ -95,60 +98,73 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import api from '@/api/axios'
+<script>
+import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
+import adminUsersService from '@/services/adminUsersService'
 import { PlusIcon, EditIcon, TrashIcon } from '@/components/icons'
 
-const toastStore = useToastStore()
-const users = ref([])
-const showCreate = ref(false)
-const creating = ref(false)
-const createError = ref('')
-const createdUser = ref(null)
-const newUser = reactive({ firstName: '', lastName: '', email: '', role: 'USER' })
-
-async function load() {
-  const res = await api.get('/admin/users')
-  users.value = res.data
+export default {
+  components: { PlusIcon, EditIcon, TrashIcon },
+  computed: {
+    ...mapStores(useToastStore),
+  },
+  data() {
+    return {
+      users: [],
+      loading: false,
+      showCreate: false,
+      creating: false,
+      createError: '',
+      createdUser: null,
+      newUser: { firstName: '', lastName: '', email: '', role: 'USER' },
+    }
+  },
+  mounted() {
+    this.load()
+  },
+  methods: {
+    async load() {
+      this.loading = true
+      try {
+        const res = await adminUsersService.getAll()
+        this.users = res.data
+      } finally {
+        this.loading = false
+      }
+    },
+    async createUser() {
+      this.creating = true
+      this.createError = ''
+      try {
+        const res = await adminUsersService.create(this.newUser)
+        this.createdUser = res.data
+        await this.load()
+      } catch (e) {
+        this.createError = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.creating = false
+      }
+    },
+    closeCreate() {
+      this.showCreate = false
+      this.createdUser = null
+      this.createError = ''
+      Object.assign(this.newUser, { firstName: '', lastName: '', email: '', role: 'USER' })
+    },
+    async deleteUser(u) {
+      if (!confirm(`Supprimer ${u.firstName} ${u.lastName} ?`)) return
+      try {
+        await adminUsersService.delete(u.id)
+        this.toastStore.success('Utilisateur supprimé')
+        await this.load()
+      } catch (e) {
+        this.toastStore.error(e.response?.data?.error || 'Erreur')
+      }
+    },
+    formatDate(d) {
+      return new Date(d).toLocaleDateString('fr-FR')
+    },
+  },
 }
-
-async function createUser() {
-  creating.value = true
-  createError.value = ''
-  try {
-    const res = await api.post('/admin/users', newUser)
-    createdUser.value = res.data
-    await load()
-  } catch (e) {
-    createError.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    creating.value = false
-  }
-}
-
-function closeCreate() {
-  showCreate.value = false
-  createdUser.value = null
-  createError.value = ''
-  Object.assign(newUser, { firstName: '', lastName: '', email: '', role: 'USER' })
-}
-
-async function deleteUser(u) {
-  if (!confirm(`Supprimer ${u.firstName} ${u.lastName} ?`)) return
-  try {
-    await api.delete(`/admin/users/${u.id}`)
-    toastStore.success('Utilisateur supprimé')
-    await load()
-  } catch (e) {
-    toastStore.error(e.response?.data?.error || 'Erreur')
-  }
-}
-
-function formatDate(d) {
-  return new Date(d).toLocaleDateString('fr-FR')
-}
-
-onMounted(load)
 </script>

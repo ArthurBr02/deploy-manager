@@ -14,7 +14,9 @@
     </header>
 
     <div class="flex-1 overflow-auto p-6">
-      <div v-if="!host" class="text-center py-20 text-gray-400">Chargement...</div>
+      <div v-if="!host" class="flex items-center justify-center py-20">
+        <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
       <div v-else class="max-w-5xl mx-auto space-y-6">
         <!-- Info card -->
         <div class="bg-white border border-warm-border rounded-xl p-5">
@@ -82,93 +84,126 @@
     @close="modal.show = false" @deployed="onDeployed" />
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import api from '@/api/axios'
+<script>
+import { mapStores, mapState } from 'pinia'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
+import hostsService from '@/services/hostsService'
+import deploymentsService from '@/services/deploymentsService'
 import StatusBadge from '@/components/StatusBadge.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
 import HostEditForm from '@/components/HostEditForm.vue'
 import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon } from '@/components/icons'
 
-const route = useRoute()
-const toastStore = useToastStore()
-const host = ref(null)
-const activeTab = ref('logs')
-const tabs = [{ id: 'logs', label: 'Logs' }, { id: 'history', label: 'Historique' }, { id: 'details', label: 'Détails' }]
-const modal = ref({ show: false, type: 'DEPLOY' })
-const logContent = ref('')
-const logEl = ref(null)
-const currentDeploymentId = ref(null)
-const activeDeployment = ref(null)
-const deploymentHistory = ref([])
-const histLoading = ref(false)
-let sseSource = null
+export default {
+  components: { StatusBadge, DeployModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon },
+  computed: {
+    ...mapStores(useToastStore),
+    ...mapState(useAuthStore, ['accessToken']),
+  },
+  data() {
+    return {
+      host: null,
+      activeTab: 'logs',
+      tabs: [{ id: 'logs', label: 'Logs' }, { id: 'history', label: 'Historique' }, { id: 'details', label: 'Détails' }],
+      modal: { show: false, type: 'DEPLOY' },
+      logContent: '',
+      currentDeploymentId: null,
+      activeDeployment: null,
+      deploymentHistory: [],
+      histLoading: false,
+      _sseSource: null,
+      _eventSrc: null,
+    }
+  },
+  async mounted() {
+    await this.loadHost()
+    await this.loadHistory()
 
-async function loadHost() {
-  const res = await api.get(`/hosts/${route.params.id}`)
-  host.value = res.data
+    const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
+    src.addEventListener('deployment.status', e => {
+      try {
+        const { hostId, deploymentId, status } = JSON.parse(e.data)
+        if (hostId !== this.$route.params.id) return
+        this.loadHost()
+        if (status === 'IN_PROGRESS') {
+          if (this.currentDeploymentId !== deploymentId) {
+            this.logContent = ''
+            this.activeTab = 'logs'
+            this.startSse(deploymentId)
+          }
+        } else {
+          this.loadHistory()
+        }
+      } catch {}
+    })
+    this._eventSrc = src
+  },
+  unmounted() {
+    if (this._sseSource) this._sseSource.close()
+    if (this._eventSrc) this._eventSrc.close()
+  },
+  methods: {
+    async loadHost() {
+      const res = await hostsService.getById(this.$route.params.id)
+      this.host = res.data
+    },
+    async loadHistory() {
+      this.histLoading = true
+      try {
+        const res = await deploymentsService.getHistory(this.$route.params.id)
+        this.deploymentHistory = res.data.content
+        const inProgress = this.deploymentHistory.find(d => d.status === 'IN_PROGRESS')
+        if (inProgress) this.startSse(inProgress.id)
+        else { this.currentDeploymentId = null; this.activeDeployment = null }
+      } finally {
+        this.histLoading = false
+      }
+    },
+    startSse(deploymentId) {
+      this.currentDeploymentId = deploymentId
+      this.activeDeployment = { id: deploymentId }
+      if (this._sseSource) this._sseSource.close()
+      const src = new EventSource(`/api/deployments/${deploymentId}/logs?token=${this.accessToken}`)
+      src.addEventListener('log', e => {
+        this.logContent += e.data
+        this.$nextTick(() => {
+          if (this.$refs.logEl) this.$refs.logEl.scrollTop = this.$refs.logEl.scrollHeight
+        })
+      })
+      src.addEventListener('end', () => {
+        src.close()
+        this.activeDeployment = null
+        this.loadHistory()
+        this.loadHost()
+      })
+      this._sseSource = src
+    },
+    async cancelDeployment() {
+      if (!this.currentDeploymentId) return
+      try {
+        await deploymentsService.cancel(this.currentDeploymentId)
+        this.toastStore.info('Déploiement annulé')
+        this.loadHistory()
+      } catch (e) {
+        this.toastStore.error(e.response?.data?.error || 'Erreur')
+      }
+    },
+    openModal(type) {
+      this.modal = { show: true, type }
+    },
+    onDeployed(deployment) {
+      this.modal.show = false
+      this.toastStore.success('Déploiement lancé')
+      this.logContent = ''
+      this.activeTab = 'logs'
+      if (deployment?.id) {
+        this.startSse(deployment.id)
+      } else {
+        setTimeout(() => this.loadHistory(), 500)
+      }
+    },
+  },
 }
-
-async function loadHistory() {
-  histLoading.value = true
-  try {
-    const res = await api.get(`/deployments?hostId=${route.params.id}&size=20`)
-    deploymentHistory.value = res.data.content
-    const inProgress = deploymentHistory.value.find(d => d.status === 'IN_PROGRESS')
-    if (inProgress) startSse(inProgress.id)
-    else { currentDeploymentId.value = null; activeDeployment.value = null }
-  } finally {
-    histLoading.value = false
-  }
-}
-
-function startSse(deploymentId) {
-  currentDeploymentId.value = deploymentId
-  activeDeployment.value = { id: deploymentId }
-  if (sseSource) sseSource.close()
-  sseSource = new EventSource(`/api/deployments/${deploymentId}/logs`)
-  sseSource.addEventListener('log', e => {
-    logContent.value += e.data
-    if (logEl.value) logEl.value.scrollTop = logEl.value.scrollHeight
-  })
-  sseSource.addEventListener('end', () => {
-    sseSource.close()
-    activeDeployment.value = null
-    loadHistory()
-    loadHost()
-  })
-}
-
-async function cancelDeployment() {
-  if (!currentDeploymentId.value) return
-  try {
-    await api.post(`/deployments/${currentDeploymentId.value}/cancel`)
-    toastStore.info('Déploiement annulé')
-    loadHistory()
-  } catch (e) {
-    toastStore.error(e.response?.data?.error || 'Erreur')
-  }
-}
-
-function openModal(type) {
-  modal.value = { show: true, type }
-}
-
-function onDeployed() {
-  modal.value.show = false
-  toastStore.success('Déploiement lancé')
-  logContent.value = ''
-  activeTab.value = 'logs'
-  setTimeout(loadHistory, 500)
-}
-
-onMounted(async () => {
-  await loadHost()
-  await loadHistory()
-})
-
-onUnmounted(() => { if (sseSource) sseSource.close() })
 </script>

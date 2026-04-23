@@ -32,25 +32,34 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script>
+import { mapStores } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 
-const auth = useAuthStore()
-const email = ref('')
-const password = ref('')
-const loading = ref(false)
-const error = ref('')
-
-async function submit() {
-  error.value = ''
-  loading.value = true
-  try {
-    await auth.login(email.value, password.value)
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Identifiants invalides'
-  } finally {
-    loading.value = false
-  }
+export default {
+  computed: {
+    ...mapStores(useAuthStore),
+  },
+  data() {
+    return {
+      email: '',
+      password: '',
+      loading: false,
+      error: '',
+    }
+  },
+  methods: {
+    async submit() {
+      this.error = ''
+      this.loading = true
+      try {
+        await this.authStore.login(this.email, this.password)
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Identifiants invalides'
+      } finally {
+        this.loading = false
+      }
+    },
+  },
 }
 </script>

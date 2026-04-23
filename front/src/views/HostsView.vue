@@ -17,7 +17,9 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-auto p-6">
-      <div v-if="loading" class="text-center py-20 text-gray-400">Chargement...</div>
+      <div v-if="loading" class="flex-1 flex items-center justify-center py-20">
+        <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
       <div v-else-if="!filtered.length" class="text-center py-20 border-2 border-dashed border-warm-border rounded-xl text-gray-400">
         <ServerIcon class="w-10 h-10 mx-auto mb-3 opacity-30" />
         <p>Aucun hôte accessible</p>
@@ -35,6 +37,8 @@
     </div>
   </div>
 
+  {{ filtered }}
+
   <!-- Deploy Modal -->
   <DeployModal
     v-if="modal.show"
@@ -46,44 +50,60 @@
   />
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import api from '@/api/axios'
+<script>
+import { mapStores, mapState } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
+import hostsService from '@/services/hostsService'
 import HostCard from '@/components/HostCard.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import { SearchIcon, PlusIcon, ServerIcon } from '@/components/icons'
 
-const authStore = useAuthStore()
-const toastStore = useToastStore()
-const hosts = ref([])
-const loading = ref(true)
-const search = ref('')
-const modal = ref({ show: false, host: null, type: 'DEPLOY', defaultTimeout: 10 })
-
-const filtered = computed(() =>
-  hosts.value.filter(h => h.name.toLowerCase().includes(search.value.toLowerCase()) || h.ip.includes(search.value))
-)
-
-async function load() {
-  try {
-    const res = await api.get('/hosts')
-    hosts.value = res.data
-  } finally {
-    loading.value = false
-  }
+export default {
+  components: { HostCard, DeployModal, SearchIcon, PlusIcon, ServerIcon },
+  computed: {
+    ...mapStores(useAuthStore, useToastStore),
+    ...mapState(useAuthStore, ['accessToken']),
+    filtered() {
+      return this.hosts.filter(h =>
+        h.name.toLowerCase().includes(this.search.toLowerCase()) || h.ip.includes(this.search)
+      )
+    },
+  },
+  data() {
+    return {
+      hosts: [],
+      loading: true,
+      search: '',
+      modal: { show: false, host: null, type: 'DEPLOY', defaultTimeout: 10 },
+      _eventSrc: null,
+    }
+  },
+  mounted() {
+    this.load()
+    const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
+    src.addEventListener('deployment.status', () => { this.load() })
+    this._eventSrc = src
+  },
+  unmounted() {
+    if (this._eventSrc) { this._eventSrc.close(); this._eventSrc = null }
+  },
+  methods: {
+    async load() {
+      try {
+        const res = await hostsService.getAll()
+        this.hosts = res.data
+      } finally {
+        this.loading = false
+      }
+    },
+    openDeployModal(host, type) {
+      this.modal = { show: true, host, type, defaultTimeout: host.defaultTimeout ?? 10 }
+    },
+    onDeployed() {
+      this.modal.show = false
+      this.toastStore.success('Déploiement lancé')
+    },
+  },
 }
-
-function openDeployModal(host, type) {
-  modal.value = { show: true, host, type, defaultTimeout: host.defaultTimeout ?? 10 }
-}
-
-function onDeployed() {
-  modal.value.show = false
-  load()
-  toastStore.success('Déploiement lancé')
-}
-
-onMounted(load)
 </script>

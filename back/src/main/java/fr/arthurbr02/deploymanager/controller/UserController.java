@@ -8,9 +8,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,5 +73,18 @@ public class UserController {
     public ResponseEntity<Void> changePassword(@AuthenticationPrincipal User user, @Valid @RequestBody ChangePasswordRequest req) {
         userService.changePassword(user.getId(), req);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/profile/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Uploader mon avatar")
+    public ResponseEntity<UserResponse> uploadAvatar(@AuthenticationPrincipal User user,
+                                                      @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(userService.uploadAvatar(user.getId(), file));
+    }
+
+    @DeleteMapping("/profile/avatar")
+    @Operation(summary = "Supprimer mon avatar")
+    public ResponseEntity<UserResponse> deleteAvatar(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(userService.deleteAvatar(user.getId()));
     }
 }

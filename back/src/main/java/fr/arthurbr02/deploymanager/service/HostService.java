@@ -49,14 +49,24 @@ public class HostService {
         }).collect(Collectors.toList());
     }
 
-    public HostResponse findById(UUID id, User currentUser) {
+    public HostWithStatusResponse findById(UUID id, User currentUser) {
         Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        UserHostPermission perm = null;
         if (currentUser.getRole() != Role.ADMIN) {
-            permissionRepository.findByUserIdAndHostId(currentUser.getId(), id)
+            perm = permissionRepository.findByUserIdAndHostId(currentUser.getId(), id)
                     .orElseThrow(() -> new RuntimeException("Accès refusé"));
         }
-        return HostResponse.from(host);
+
+        Deployment last = deploymentRepository.findLastByHostId(id).orElse(null);
+        String lastStatus = last != null ? last.getStatus().name() : null;
+        LocalDateTime lastAt = last != null ? last.getCreatedAt() : null;
+
+        boolean canDeploy = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDeploy());
+        boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
+
+        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit);
     }
 
     @Transactional

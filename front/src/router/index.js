@@ -18,6 +18,7 @@ const router = createRouter({
         { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
         { path: 'admin/users', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { admin: true } },
         { path: 'admin/users/:id', name: 'admin-user-detail', component: () => import('@/views/admin/UserDetailView.vue'), meta: { admin: true } },
+        { path: 'admin/hosts/new', name: 'admin-host-create', component: () => import('@/views/admin/AdminHostCreateView.vue'), meta: { admin: true } },
         { path: 'admin/settings', name: 'admin-settings', component: () => import('@/views/admin/SettingsView.vue'), meta: { admin: true } },
       ]
     },

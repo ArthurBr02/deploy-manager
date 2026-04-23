@@ -35,19 +35,23 @@
   </div>
 </template>
 
-<script setup>
+<script>
 import StatusBadge from '@/components/StatusBadge.vue'
 import { EyeIcon, RocketIcon, PackageIcon, TruckIcon } from '@/components/icons'
 
-const props = defineProps({ host: Object })
-defineEmits(['deploy', 'generate', 'deliver'])
-
-function resolvedCommand(field) {
-  const cmd = props.host[field]
-  if (!cmd) return ''
-  return cmd
-    .replace('{host}', props.host.name || '')
-    .replace('{ip}', props.host.ip || '')
-    .replace('{domain}', props.host.domain || '')
+export default {
+  components: { StatusBadge, EyeIcon, RocketIcon, PackageIcon, TruckIcon },
+  props: { host: Object },
+  emits: ['deploy', 'generate', 'deliver'],
+  methods: {
+    resolvedCommand(field) {
+      const cmd = this.host[field]
+      if (!cmd) return ''
+      return cmd
+        .replace('{host}', this.host.name || '')
+        .replace('{ip}', this.host.ip || '')
+        .replace('{domain}', this.host.domain || '')
+    },
+  },
 }
 </script>

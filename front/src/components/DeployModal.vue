@@ -29,40 +29,51 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import api from '@/api/axios'
+<script>
+import deploymentsService from '@/services/deploymentsService'
 
-const props = defineProps({ host: Object, type: String, defaultTimeout: { type: Number, default: 10 } })
-const emit = defineEmits(['close', 'deployed'])
-
-const timeout = ref(props.defaultTimeout)
-const loading = ref(false)
-const error = ref('')
-
-const typeLabel = computed(() => ({ DEPLOY: 'Déploiement', GENERATE: 'Génération', DELIVER: 'Livraison' }[props.type] || props.type))
-
-const resolvedCommand = computed(() => {
-  const cmd = props.type === 'DEPLOY' ? props.host.deploymentCommand
-    : props.type === 'GENERATE' ? props.host.generateCommand
-    : props.host.deliverCommand
-  if (!cmd) return 'sh /root/{host}/liv.sh'.replace('{host}', props.host.name)
-  return cmd
-    .replace('{host}', props.host.name || '')
-    .replace('{ip}', props.host.ip || '')
-    .replace('{domain}', props.host.domain || '')
-})
-
-async function launch() {
-  loading.value = true
-  error.value = ''
-  try {
-    await api.post(`/deployments/hosts/${props.host.id}/deploy`, { type: props.type, timeout: timeout.value })
-    emit('deployed')
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Erreur lors du lancement'
-  } finally {
-    loading.value = false
-  }
+export default {
+  props: {
+    host: Object,
+    type: String,
+    defaultTimeout: { type: Number, default: 10 },
+  },
+  emits: ['close', 'deployed'],
+  data() {
+    return {
+      timeout: this.defaultTimeout,
+      loading: false,
+      error: '',
+    }
+  },
+  computed: {
+    typeLabel() {
+      return { DEPLOY: 'Déploiement', GENERATE: 'Génération', DELIVER: 'Livraison' }[this.type] || this.type
+    },
+    resolvedCommand() {
+      const cmd = this.type === 'DEPLOY' ? this.host.deploymentCommand
+        : this.type === 'GENERATE' ? this.host.generateCommand
+        : this.host.deliverCommand
+      if (!cmd) return 'sh /root/{host}/liv.sh'.replace('{host}', this.host.name)
+      return cmd
+        .replace('{host}', this.host.name || '')
+        .replace('{ip}', this.host.ip || '')
+        .replace('{domain}', this.host.domain || '')
+    },
+  },
+  methods: {
+    async launch() {
+      this.loading = true
+      this.error = ''
+      try {
+        const res = await deploymentsService.launch(this.host.id, { type: this.type, timeout: this.timeout })
+        this.$emit('deployed', res.data)
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Erreur lors du lancement'
+      } finally {
+        this.loading = false
+      }
+    },
+  },
 }
 </script>

@@ -8,6 +8,26 @@
         <!-- Profile form -->
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <h2 class="font-semibold text-gray-900">Informations personnelles</h2>
+
+          <!-- Avatar -->
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center bg-gradient-to-br from-purple-500 to-accent text-white text-lg font-semibold">
+              <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="w-full h-full object-cover" alt="avatar" />
+              <span v-else>{{ userInitials }}</span>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="cursor-pointer">
+                <input type="file" accept="image/*" class="hidden" @change="uploadAvatar" :disabled="uploadingAvatar" />
+                <span class="px-3 py-1.5 border border-warm-border rounded-md text-sm bg-white hover:bg-warm-muted" :class="uploadingAvatar ? 'opacity-50 pointer-events-none' : ''">
+                  {{ uploadingAvatar ? 'Envoi...' : "Changer l'avatar" }}
+                </span>
+              </label>
+              <button v-if="authStore.user?.avatar" @click="deleteAvatar" :disabled="deletingAvatar" class="px-3 py-1.5 border border-warm-border rounded-md text-sm text-red-500 hover:bg-red-50 disabled:opacity-50 text-left">
+                {{ deletingAvatar ? 'Suppression...' : 'Supprimer' }}
+              </button>
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
@@ -49,53 +69,92 @@
   </div>
 </template>
 
-<script setup>
-import { reactive, ref, onMounted } from 'vue'
-import api from '@/api/axios'
+<script>
+import { mapStores } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
+import profileService from '@/services/profileService'
 
-const authStore = useAuthStore()
-const toastStore = useToastStore()
-const form = reactive({ firstName: '', lastName: '', avatar: '' })
-const pwForm = reactive({ currentPassword: '', newPassword: '' })
-const savingProfile = ref(false)
-const savingPw = ref(false)
-const profileError = ref('')
-const pwError = ref('')
-
-onMounted(() => {
-  form.firstName = authStore.user?.firstName || ''
-  form.lastName = authStore.user?.lastName || ''
-  form.avatar = authStore.user?.avatar || ''
-})
-
-async function saveProfile() {
-  savingProfile.value = true
-  profileError.value = ''
-  try {
-    await api.put('/profile', form)
-    await authStore.refreshProfile()
-    toastStore.success('Profil mis à jour')
-  } catch (e) {
-    profileError.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    savingProfile.value = false
-  }
-}
-
-async function changePassword() {
-  savingPw.value = true
-  pwError.value = ''
-  try {
-    await api.post('/profile/change-password', pwForm)
-    toastStore.success('Mot de passe modifié')
-    pwForm.currentPassword = ''
-    pwForm.newPassword = ''
-  } catch (e) {
-    pwError.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    savingPw.value = false
-  }
+export default {
+  computed: {
+    ...mapStores(useAuthStore, useToastStore),
+    userInitials() {
+      const u = this.authStore.user
+      if (!u) return '?'
+      return ((u.firstName?.[0] || '') + (u.lastName?.[0] || '')).toUpperCase()
+    },
+  },
+  data() {
+    return {
+      form: { firstName: '', lastName: '' },
+      pwForm: { currentPassword: '', newPassword: '' },
+      savingProfile: false,
+      savingPw: false,
+      profileError: '',
+      pwError: '',
+      uploadingAvatar: false,
+      deletingAvatar: false,
+    }
+  },
+  mounted() {
+    this.form.firstName = this.authStore.user?.firstName || ''
+    this.form.lastName = this.authStore.user?.lastName || ''
+  },
+  methods: {
+    async saveProfile() {
+      this.savingProfile = true
+      this.profileError = ''
+      try {
+        await profileService.update(this.form)
+        await this.authStore.refreshProfile()
+        this.toastStore.success('Profil mis à jour')
+      } catch (e) {
+        this.profileError = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.savingProfile = false
+      }
+    },
+    async changePassword() {
+      this.savingPw = true
+      this.pwError = ''
+      try {
+        await profileService.changePassword(this.pwForm)
+        this.toastStore.success('Mot de passe modifié')
+        this.pwForm.currentPassword = ''
+        this.pwForm.newPassword = ''
+      } catch (e) {
+        this.pwError = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.savingPw = false
+      }
+    },
+    async uploadAvatar(event) {
+      const file = event.target.files[0]
+      if (!file) return
+      this.uploadingAvatar = true
+      try {
+        await profileService.uploadAvatar(file)
+        await this.authStore.refreshProfile()
+        this.toastStore.success('Avatar mis à jour')
+      } catch (e) {
+        this.toastStore.error(e.response?.data?.error || "Erreur lors de l'upload")
+      } finally {
+        this.uploadingAvatar = false
+        event.target.value = ''
+      }
+    },
+    async deleteAvatar() {
+      this.deletingAvatar = true
+      try {
+        await profileService.deleteAvatar()
+        await this.authStore.refreshProfile()
+        this.toastStore.success('Avatar supprimé')
+      } catch (e) {
+        this.toastStore.error(e.response?.data?.error || 'Erreur lors de la suppression')
+      } finally {
+        this.deletingAvatar = false
+      }
+    },
+  },
 }
 </script>

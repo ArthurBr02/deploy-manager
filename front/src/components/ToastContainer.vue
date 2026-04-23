@@ -14,16 +14,23 @@
   </div>
 </template>
 
-<script setup>
+<script>
+import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
-const toastStore = useToastStore()
 
-function toastClass(type) {
-  return {
-    success: 'bg-status-success-bg border-green-200 text-status-success',
-    error: 'bg-status-failure-bg border-red-200 text-status-failure',
-    info: 'bg-blue-50 border-blue-200 text-blue-700',
-  }[type] || 'bg-warm-panel border-warm-border text-gray-700'
+export default {
+  computed: {
+    ...mapStores(useToastStore),
+  },
+  methods: {
+    toastClass(type) {
+      return {
+        success: 'bg-status-success-bg border-green-200 text-status-success',
+        error: 'bg-status-failure-bg border-red-200 text-status-failure',
+        info: 'bg-blue-50 border-blue-200 text-blue-700',
+      }[type] || 'bg-warm-panel border-warm-border text-gray-700'
+    },
+  },
 }
 </script>
 

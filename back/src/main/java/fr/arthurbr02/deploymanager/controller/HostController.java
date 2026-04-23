@@ -32,7 +32,7 @@ public class HostController {
 
     @GetMapping("/hosts/{id}")
     @Operation(summary = "Détail d'un hôte")
-    public ResponseEntity<HostResponse> get(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+    public ResponseEntity<HostWithStatusResponse> get(@PathVariable UUID id, @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(hostService.findById(id, user));
     }
 

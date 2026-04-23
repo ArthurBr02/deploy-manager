@@ -29,25 +29,31 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import api from '@/api/axios'
+<script>
+import authService from '@/services/authService'
 
-const email = ref('')
-const loading = ref(false)
-const error = ref('')
-const sent = ref(false)
-
-async function submit() {
-  loading.value = true
-  error.value = ''
-  try {
-    await api.post('/auth/forgot-password', { email: email.value })
-    sent.value = true
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    loading.value = false
-  }
+export default {
+  data() {
+    return {
+      email: '',
+      loading: false,
+      error: '',
+      sent: false,
+    }
+  },
+  methods: {
+    async submit() {
+      this.loading = true
+      this.error = ''
+      try {
+        await authService.forgotPassword(this.email)
+        this.sent = true
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.loading = false
+      }
+    },
+  },
 }
 </script>

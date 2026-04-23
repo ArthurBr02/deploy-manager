@@ -3,7 +3,10 @@
   <ToastContainer />
 </template>
 
-<script setup>
-import { RouterView } from 'vue-router'
+<script>
 import ToastContainer from '@/components/ToastContainer.vue'
+
+export default {
+  components: { ToastContainer },
+}
 </script>

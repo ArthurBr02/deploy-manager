@@ -43,6 +43,9 @@ public class Deployment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "finished_at")
+    private LocalDateTime finishedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "host_id", insertable = false, updatable = false)
     private Host host;

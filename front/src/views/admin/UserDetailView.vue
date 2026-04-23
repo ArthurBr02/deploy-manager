@@ -8,7 +8,9 @@
       </div>
     </header>
     <div class="flex-1 overflow-auto p-6">
-      <div v-if="!user" class="text-center py-20 text-gray-400">Chargement...</div>
+      <div v-if="!user" class="flex items-center justify-center py-20">
+        <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
       <div v-else class="max-w-2xl mx-auto space-y-6">
         <!-- User info -->
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
@@ -60,64 +62,70 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import api from '@/api/axios'
+<script>
+import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
+import adminUsersService from '@/services/adminUsersService'
+import hostsService from '@/services/hostsService'
 
-const route = useRoute()
-const toastStore = useToastStore()
-const user = ref(null)
-const hosts = ref([])
-const permissions = ref([])
-const form = reactive({ firstName: '', lastName: '', role: 'USER' })
-const saving = ref(false)
-const error = ref('')
-
-function getPerm(hostId, field) {
-  return permissions.value.find(p => p.hostId === hostId)?.[field] || false
+export default {
+  computed: {
+    ...mapStores(useToastStore),
+  },
+  data() {
+    return {
+      user: null,
+      hosts: [],
+      permissions: [],
+      form: { firstName: '', lastName: '', role: 'USER' },
+      saving: false,
+      error: '',
+    }
+  },
+  async mounted() {
+    const id = this.$route.params.id
+    const [userRes, hostsRes, permsRes] = await Promise.all([
+      adminUsersService.getById(id),
+      hostsService.getAll(),
+      adminUsersService.getPermissions(id),
+    ])
+    this.user = userRes.data
+    this.form.firstName = userRes.data.firstName
+    this.form.lastName = userRes.data.lastName
+    this.form.role = userRes.data.role
+    this.hosts = hostsRes.data
+    this.permissions = permsRes.data
+  },
+  methods: {
+    getPerm(hostId, field) {
+      return this.permissions.find(p => p.hostId === hostId)?.[field] || false
+    },
+    async togglePerm(hostId, field, value) {
+      const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false }
+      const updated = { ...existing, [field]: value }
+      try {
+        await adminUsersService.setPermission(this.$route.params.id, { hostId, canDeploy: updated.canDeploy, canEdit: updated.canEdit })
+        const idx = this.permissions.findIndex(p => p.hostId === hostId)
+        if (idx >= 0) this.permissions[idx] = updated
+        else this.permissions.push(updated)
+        this.toastStore.success('Permissions mises à jour')
+      } catch (e) {
+        this.toastStore.error(e.response?.data?.error || 'Erreur')
+      }
+    },
+    async save() {
+      this.saving = true
+      this.error = ''
+      try {
+        const res = await adminUsersService.update(this.$route.params.id, this.form)
+        this.user = res.data
+        this.toastStore.success('Utilisateur mis à jour')
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.saving = false
+      }
+    },
+  },
 }
-
-async function togglePerm(hostId, field, value) {
-  const existing = permissions.value.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false }
-  const updated = { ...existing, [field]: value }
-  try {
-    await api.put(`/admin/users/${route.params.id}/permissions`, { hostId, canDeploy: updated.canDeploy, canEdit: updated.canEdit })
-    const idx = permissions.value.findIndex(p => p.hostId === hostId)
-    if (idx >= 0) permissions.value[idx] = updated
-    else permissions.value.push(updated)
-    toastStore.success('Permissions mises à jour')
-  } catch (e) {
-    toastStore.error(e.response?.data?.error || 'Erreur')
-  }
-}
-
-async function save() {
-  saving.value = true
-  error.value = ''
-  try {
-    const res = await api.put(`/admin/users/${route.params.id}`, form)
-    user.value = res.data
-    toastStore.success('Utilisateur mis à jour')
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    saving.value = false
-  }
-}
-
-onMounted(async () => {
-  const [userRes, hostsRes, permsRes] = await Promise.all([
-    api.get(`/admin/users/${route.params.id}`),
-    api.get('/hosts'),
-    api.get(`/admin/users/${route.params.id}/permissions`),
-  ])
-  user.value = userRes.data
-  form.firstName = userRes.data.firstName
-  form.lastName = userRes.data.lastName
-  form.role = userRes.data.role
-  hosts.value = hostsRes.data
-  permissions.value = permsRes.data
-})
 </script>

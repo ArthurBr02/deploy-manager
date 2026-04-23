@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentRequest;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentResponse;
+import fr.arthurbr02.deploymanager.dto.deployment.DeploymentStatsResponse;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.*;
 import fr.arthurbr02.deploymanager.repository.*;
@@ -37,8 +38,11 @@ public class DeploymentService {
 
     // Map of deploymentId -> running Process
     private final Map<UUID, Process> runningProcesses = new ConcurrentHashMap<>();
-    // Map of deploymentId -> list of SSE emitters
+    // Map of deploymentId -> list of SSE emitters (log streaming)
     private final Map<UUID, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    // Global emitters for deployment status events: emitter + allowed host IDs (null = admin, all hosts)
+    private record EventEmitter(SseEmitter emitter, Set<UUID> allowedHostIds) {}
+    private final List<EventEmitter> globalEmitters = new CopyOnWriteArrayList<>();
 
     @Transactional
     public DeploymentResponse launch(UUID hostId, DeploymentRequest req, User currentUser) {
@@ -76,6 +80,7 @@ public class DeploymentService {
         deployment.setLogFilePath(logFile);
         deploymentRepository.save(deployment);
 
+        broadcastStatusEvent(hostId, deploymentId, DeploymentStatus.IN_PROGRESS);
         final Deployment finalDeployment = deployment;
         CompletableFuture.runAsync(() -> runDeployment(finalDeployment, resolved, logFile));
 
@@ -123,8 +128,10 @@ public class DeploymentService {
         deploymentRepository.findById(deploymentId).ifPresent(d -> {
             if (d.getStatus() == DeploymentStatus.IN_PROGRESS) {
                 d.setStatus(status);
+                d.setFinishedAt(LocalDateTime.now());
                 d.setLogs(readLogFile(logFile));
                 deploymentRepository.save(d);
+                broadcastStatusEvent(d.getHostId(), deploymentId, status);
             }
             broadcastLog(deploymentId, null);
             closeEmitters(deploymentId);
@@ -149,6 +156,7 @@ public class DeploymentService {
         String logs = readLogFile(d.getLogFilePath());
         d.setLogs(logs);
         deploymentRepository.save(d);
+        broadcastStatusEvent(d.getHostId(), deploymentId, DeploymentStatus.CANCELLED);
         broadcastLog(deploymentId, null);
         closeEmitters(deploymentId);
         return DeploymentResponse.from(loadWithJoins(d));
@@ -234,9 +242,43 @@ public class DeploymentService {
                     String logs = readLogFile(d.getLogFilePath());
                     d.setLogs((logs != null ? logs : "") + "\n[TIMEOUT] Déploiement annulé après " + d.getTimeout() + " minutes");
                     deploymentRepository.save(d);
+                    broadcastStatusEvent(d.getHostId(), d.getId(), DeploymentStatus.FAILURE);
                     broadcastLog(d.getId(), null);
                     closeEmitters(d.getId());
                 });
+    }
+
+    public DeploymentStatsResponse getStats(String period) {
+        LocalDateTime since = switch (period == null ? "" : period) {
+            case "24h" -> LocalDateTime.now().minusHours(24);
+            case "7d"  -> LocalDateTime.now().minusDays(7);
+            case "30d" -> LocalDateTime.now().minusDays(30);
+            default    -> null;
+        };
+
+        long total, success, failure, inProgress;
+        if (since != null) {
+            total      = deploymentRepository.countByCreatedAtAfter(since);
+            success    = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.SUCCESS);
+            failure    = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.FAILURE);
+            inProgress = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.IN_PROGRESS);
+        } else {
+            total      = deploymentRepository.count();
+            success    = deploymentRepository.countByStatus(DeploymentStatus.SUCCESS);
+            failure    = deploymentRepository.countByStatus(DeploymentStatus.FAILURE);
+            inProgress = deploymentRepository.countByStatus(DeploymentStatus.IN_PROGRESS);
+        }
+
+        Double medianSec = deploymentRepository.medianDurationSeconds(since);
+        String medianDuration = formatMedianDuration(medianSec);
+
+        return new DeploymentStatsResponse(total, success, failure, inProgress, medianDuration);
+    }
+
+    private String formatMedianDuration(Double seconds) {
+        if (seconds == null || seconds == 0) return "—";
+        long s = seconds.longValue();
+        return String.format("%d min %02d s", s / 60, s % 60);
     }
 
     public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, String status, String type, int page, int size) {
@@ -284,6 +326,43 @@ public class DeploymentService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public SseEmitter subscribeEvents(User user) {
+        Set<UUID> allowedHostIds = null;
+        if (user.getRole() != Role.ADMIN) {
+            allowedHostIds = permissionRepository.findByUserId(user.getId()).stream()
+                    .map(UserHostPermission::getHostId)
+                    .collect(Collectors.toSet());
+        }
+        log.info("[SSE] new subscriber userId={} role={} allowedHosts={}", user.getId(), user.getRole(), allowedHostIds == null ? "ALL" : allowedHostIds);
+        SseEmitter emitter = new SseEmitter(0L);
+        EventEmitter entry = new EventEmitter(emitter, allowedHostIds);
+        globalEmitters.add(entry);
+        emitter.onCompletion(() -> { log.info("[SSE] emitter completed userId={}", user.getId()); globalEmitters.remove(entry); });
+        emitter.onTimeout(() -> { log.info("[SSE] emitter timeout userId={}", user.getId()); globalEmitters.remove(entry); });
+        emitter.onError(e -> { log.warn("[SSE] emitter error userId={}: {}", user.getId(), e.getMessage()); globalEmitters.remove(entry); });
+        return emitter;
+    }
+
+    private void broadcastStatusEvent(UUID hostId, UUID deploymentId, DeploymentStatus status) {
+        String data = String.format("{\"hostId\":\"%s\",\"deploymentId\":\"%s\",\"status\":\"%s\"}", hostId, deploymentId, status.name());
+        log.info("[SSE] broadcastStatusEvent hostId={} deploymentId={} status={} totalEmitters={}", hostId, deploymentId, status, globalEmitters.size());
+        List<EventEmitter> dead = new ArrayList<>();
+        for (EventEmitter entry : globalEmitters) {
+            if (entry.allowedHostIds() != null && !entry.allowedHostIds().contains(hostId)) {
+                log.debug("[SSE] skipping emitter (no access to hostId={})", hostId);
+                continue;
+            }
+            try {
+                entry.emitter().send(SseEmitter.event().name("deployment.status").data(data));
+                log.debug("[SSE] sent to emitter ok");
+            } catch (Exception e) {
+                log.warn("[SSE] emitter dead, removing: {}", e.getMessage());
+                dead.add(entry);
+            }
+        }
+        globalEmitters.removeAll(dead);
     }
 
     private Deployment loadWithJoins(Deployment d) {

@@ -40,30 +40,38 @@
   </div>
 </template>
 
-<script setup>
-import { reactive, ref } from 'vue'
-import api from '@/api/axios'
+<script>
+import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
+import hostsService from '@/services/hostsService'
 
-const props = defineProps({ host: Object })
-const emit = defineEmits(['saved'])
-const toastStore = useToastStore()
-
-const form = reactive({ ...props.host })
-const saving = ref(false)
-const error = ref('')
-
-async function save() {
-  saving.value = true
-  error.value = ''
-  try {
-    await api.put(`/hosts/${props.host.id}`, form)
-    toastStore.success('Hôte mis à jour')
-    emit('saved')
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Erreur'
-  } finally {
-    saving.value = false
-  }
+export default {
+  props: { host: Object },
+  emits: ['saved'],
+  computed: {
+    ...mapStores(useToastStore),
+  },
+  data() {
+    return {
+      form: { ...this.host },
+      saving: false,
+      error: '',
+    }
+  },
+  methods: {
+    async save() {
+      this.saving = true
+      this.error = ''
+      try {
+        await hostsService.update(this.host.id, this.form)
+        this.toastStore.success('Hôte mis à jour')
+        this.$emit('saved')
+      } catch (e) {
+        this.error = e.response?.data?.error || 'Erreur'
+      } finally {
+        this.saving = false
+      }
+    },
+  },
 }
 </script>

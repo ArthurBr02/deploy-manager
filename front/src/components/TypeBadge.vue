@@ -4,8 +4,13 @@
   </span>
 </template>
 
-<script setup>
-const props = defineProps({ type: String })
-const map = { DEPLOY: 'Déployer', GENERATE: 'Générer', DELIVER: 'Livrer' }
-const label = map[props.type] || props.type
+<script>
+const TYPE_MAP = { DEPLOY: 'Déployer', GENERATE: 'Générer', DELIVER: 'Livrer' }
+
+export default {
+  props: { type: String },
+  computed: {
+    label() { return TYPE_MAP[this.type] || this.type },
+  },
+}
 </script>

@@ -10,7 +10,7 @@ Ce fichier fournit le contexte et les règles pour travailler sur le projet **De
 
 ## Stack Technique
 - **Backend** : Java, Spring Boot
-- **Frontend** : Vue.js, Tailwind CSS, Pinia, Vite
+- **Frontend** : Vue.js 3 API OPTIONS, Tailwind CSS, Pinia, Vite
 - **Base de données** : PostgreSQL (avec migrations Flyway/Liquibase)
 - **Sécurité** : JWT (Access + Refresh), Argon2 pour le hachage
 - **Communication temps réel** : SSE (Server-Sent Events)
