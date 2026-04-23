@@ -5,6 +5,7 @@ import fr.arthurbr02.deploymanager.dto.deployment.DeploymentResponse;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentStatsResponse;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.*;
+import fr.arthurbr02.deploymanager.exception.ForbiddenException;
 import fr.arthurbr02.deploymanager.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.*;
 import java.nio.file.*;
@@ -51,8 +55,8 @@ public class DeploymentService {
 
         if (currentUser.getRole() != Role.ADMIN) {
             UserHostPermission perm = permissionRepository.findByUserIdAndHostId(currentUser.getId(), hostId)
-                    .orElseThrow(() -> new RuntimeException("Accès refusé"));
-            if (!perm.isCanDeploy()) throw new RuntimeException("Permission insuffisante");
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+            if (!perm.isCanDeploy()) throw new ForbiddenException("Permission insuffisante");
         }
 
         if (deploymentRepository.existsByHostIdAndStatus(hostId, DeploymentStatus.IN_PROGRESS)) {
@@ -80,9 +84,14 @@ public class DeploymentService {
         deployment.setLogFilePath(logFile);
         deploymentRepository.save(deployment);
 
-        broadcastStatusEvent(hostId, deploymentId, DeploymentStatus.IN_PROGRESS);
         final Deployment finalDeployment = deployment;
-        CompletableFuture.runAsync(() -> runDeployment(finalDeployment, resolved, logFile));
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                broadcastStatusEvent(hostId, deploymentId, DeploymentStatus.IN_PROGRESS);
+                CompletableFuture.runAsync(() -> runDeployment(finalDeployment, resolved, logFile));
+            }
+        });
 
         return DeploymentResponse.from(loadWithJoins(deployment));
     }
@@ -92,7 +101,16 @@ public class DeploymentService {
         DeploymentStatus finalStatus = DeploymentStatus.SUCCESS;
         try {
             Files.createDirectories(Paths.get(logDir));
-            ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
+            String serverOs = configService.get("server_os", "linux");
+            String shellBin, shellArg;
+            if ("windows".equalsIgnoreCase(serverOs)) {
+                shellBin = configService.get("shell_windows_bin", "cmd.exe");
+                shellArg = configService.get("shell_windows_arg", "/c");
+            } else {
+                shellBin = configService.get("shell_linux_bin", "/bin/sh");
+                shellArg = configService.get("shell_linux_arg", "-c");
+            }
+            ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, command);
             pb.redirectErrorStream(true);
             Process process = pb.start();
             runningProcesses.put(deploymentId, process);
@@ -146,7 +164,7 @@ public class DeploymentService {
             throw new RuntimeException("Le déploiement n'est pas en cours");
         }
         if (currentUser.getRole() != Role.ADMIN && !d.getUserId().equals(currentUser.getId())) {
-            throw new RuntimeException("Non autorisé");
+            throw new ForbiddenException("Non autorisé");
         }
         Process p = runningProcesses.get(deploymentId);
         if (p != null) {
@@ -163,10 +181,19 @@ public class DeploymentService {
     }
 
     public SseEmitter streamLogs(UUID deploymentId, User currentUser) {
-        Deployment d = deploymentRepository.findById(deploymentId)
-                .orElseThrow(() -> new RuntimeException("Déploiement introuvable"));
-
         SseEmitter emitter = new SseEmitter(0L);
+        Optional<Deployment> opt = deploymentRepository.findById(deploymentId);
+        if (opt.isEmpty()) {
+            try {
+                emitter.send(SseEmitter.event().name("error").data("Déploiement introuvable"));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+            return emitter;
+        }
+        Deployment d = opt.get();
+
         if (d.getStatus() != DeploymentStatus.IN_PROGRESS) {
             try {
                 if (d.getLogs() != null) {
@@ -248,6 +275,7 @@ public class DeploymentService {
                 });
     }
 
+    @Transactional(readOnly = true)
     public DeploymentStatsResponse getStats(String period) {
         LocalDateTime since = switch (period == null ? "" : period) {
             case "24h" -> LocalDateTime.now().minusHours(24);

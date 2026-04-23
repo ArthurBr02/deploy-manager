@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,6 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID>, J
     long countByCreatedAtAfterAndStatus(LocalDateTime since, DeploymentStatus status);
     long countByStatus(DeploymentStatus status);
 
-    @Query(value = "SELECT COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (finished_at - created_at))), 0) FROM deployments WHERE finished_at IS NOT NULL AND status = 'SUCCESS' AND (:since IS NULL OR created_at > :since)", nativeQuery = true)
-    Double medianDurationSeconds(LocalDateTime since);
+    @Query(value = "SELECT COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (finished_at - created_at))), 0) FROM deployments WHERE finished_at IS NOT NULL AND status = 'SUCCESS' AND (CAST(:since AS timestamp) IS NULL OR created_at > CAST(:since AS timestamp))", nativeQuery = true)
+    Double medianDurationSeconds(@Param("since") LocalDateTime since);
 }

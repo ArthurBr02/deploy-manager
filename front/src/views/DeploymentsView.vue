@@ -65,28 +65,32 @@
         <span v-if="stats">{{ paginationLabel }}</span>
         <span v-else></span>
         <div v-if="total > 1" class="flex items-center gap-1">
-          <button @click="page--" :disabled="page === 0" class="px-3 py-1.5 text-sm border border-warm-border rounded-md disabled:opacity-40">← Précédent</button>
+          <button @click="page--" :disabled="page === 0" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-white hover:bg-warm-muted disabled:opacity-40">← Précédent</button>
           <span class="px-2 text-sm text-gray-500">Page <strong>{{ page + 1 }}</strong> / {{ total }}</span>
           <button @click="page++" :disabled="page >= total - 1" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-40">Suivant →</button>
         </div>
       </div>
     </div>
   </div>
+
+  <DeploymentLogsModal v-if="logsModal.deployment" :deployment="logsModal.deployment" @close="logsModal.deployment = null" />
 </template>
 
 <script>
 import deploymentsService from '@/services/deploymentsService'
 import hostsService from '@/services/hostsService'
 import DeploymentTable from '@/components/DeploymentTable.vue'
+import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import { SearchIcon, DownloadIcon } from '@/components/icons'
 
 export default {
-  components: { DeploymentTable, SearchIcon, DownloadIcon },
+  components: { DeploymentTable, DeploymentLogsModal, SearchIcon, DownloadIcon },
   data() {
     return {
       deployments: [],
       hosts: [],
       loading: false,
+      logsModal: { deployment: null },
       page: 0,
       total: 1,
       totalElements: 0,
@@ -175,8 +179,8 @@ export default {
       this.filters.period = '7d'
       this.page = 0
     },
-    viewDeployment(id) {
-      this.$router.push(`/deployments/${id}`)
+    viewDeployment(dep) {
+      this.logsModal.deployment = dep
     },
     async exportCsv() {
       const params = {}

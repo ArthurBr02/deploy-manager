@@ -25,7 +25,7 @@
           <td class="py-3 px-4 text-xs font-mono text-gray-400">{{ formatDuration(d.durationSeconds) }}</td>
           <td class="py-3 px-4 text-xs text-gray-400">{{ formatDate(d.createdAt) }}</td>
           <td class="py-3 px-4">
-            <button @click="$emit('view', d.id)" class="p-1 rounded hover:bg-warm-muted text-gray-400 hover:text-gray-600">
+            <button @click="$emit('view', d)" class="p-1 rounded hover:bg-warm-muted text-gray-400 hover:text-gray-600">
               <EyeIcon class="w-3.5 h-3.5" />
             </button>
           </td>

@@ -37,6 +37,7 @@ export default {
     host: Object,
     type: String,
     defaultTimeout: { type: Number, default: 10 },
+    defaultDeployCommand: { type: String, default: '' },
   },
   emits: ['close', 'deployed'],
   data() {
@@ -54,7 +55,7 @@ export default {
       const cmd = this.type === 'DEPLOY' ? this.host.deploymentCommand
         : this.type === 'GENERATE' ? this.host.generateCommand
         : this.host.deliverCommand
-      if (!cmd) return 'sh /root/{host}/liv.sh'.replace('{host}', this.host.name)
+      if (!cmd) return (this.defaultDeployCommand || '').replace('{host}', this.host.name || '').replace('{ip}', this.host.ip || '').replace('{domain}', this.host.domain || '')
       return cmd
         .replace('{host}', this.host.name || '')
         .replace('{ip}', this.host.ip || '')

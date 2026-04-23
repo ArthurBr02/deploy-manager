@@ -37,14 +37,13 @@
     </div>
   </div>
 
-  {{ filtered }}
-
   <!-- Deploy Modal -->
   <DeployModal
     v-if="modal.show"
     :host="modal.host"
     :type="modal.type"
     :default-timeout="modal.defaultTimeout"
+    :default-deploy-command="defaultDeployCommand"
     @close="modal.show = false"
     @deployed="onDeployed"
   />
@@ -55,6 +54,7 @@ import { mapStores, mapState } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
+import adminSettingsService from '@/services/adminSettingsService'
 import HostCard from '@/components/HostCard.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import { SearchIcon, PlusIcon, ServerIcon } from '@/components/icons'
@@ -76,11 +76,15 @@ export default {
       loading: true,
       search: '',
       modal: { show: false, host: null, type: 'DEPLOY', defaultTimeout: 10 },
+      defaultDeployCommand: '',
       _eventSrc: null,
     }
   },
   mounted() {
     this.load()
+    adminSettingsService.get().then(res => {
+      this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
+    }).catch(() => {})
     const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
     src.addEventListener('deployment.status', () => { this.load() })
     this._eventSrc = src

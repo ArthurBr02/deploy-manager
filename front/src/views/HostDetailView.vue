@@ -41,6 +41,9 @@
             <button v-if="host.canDeploy && host.deliverCommand" @click="openModal('DELIVER')" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted">
               <TruckIcon class="w-3.5 h-3.5" /> Livrer
             </button>
+            <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted ml-auto">
+              <EditIcon class="w-3.5 h-3.5" /> Modifier
+            </RouterLink>
           </div>
         </div>
 
@@ -55,18 +58,31 @@
 
         <!-- Logs -->
         <div v-if="activeTab === 'logs'">
-          <div v-if="!currentDeploymentId" class="text-center py-10 text-gray-400 border-2 border-dashed border-warm-border rounded-xl">
+          <div v-if="!viewedDeployment && !currentDeploymentId" class="text-center py-10 text-gray-400 border-2 border-dashed border-warm-border rounded-xl">
             <TerminalIcon class="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p>Aucun déploiement actif</p>
+            <p>Aucun déploiement disponible</p>
           </div>
-          <div v-else>
+          <div v-else class="space-y-3">
+            <!-- Deployment metadata banner -->
+            <div v-if="viewedDeployment || currentDeploymentId" class="bg-white border border-warm-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+              <span class="text-gray-400">
+                <span class="font-medium text-gray-700">{{ displayDeployment?.userFirstName }} {{ displayDeployment?.userLastName }}</span>
+              </span>
+              <span class="text-gray-400">{{ formatDate(displayDeployment?.createdAt) }}</span>
+              <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
+              <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
+              <span v-if="currentDeploymentId" class="ml-auto flex items-center gap-1.5 text-status-progress text-xs animate-pulse">
+                <span class="w-1.5 h-1.5 rounded-full bg-status-progress inline-block"></span>
+                En cours…
+              </span>
+            </div>
             <div class="dm-term h-96 overflow-auto" ref="logEl">{{ logContent }}</div>
           </div>
         </div>
 
         <!-- History -->
         <div v-if="activeTab === 'history'">
-          <DeploymentTable :deployments="deploymentHistory" :loading="histLoading" />
+          <DeploymentTable :deployments="deploymentHistory" :loading="histLoading" @view="viewDeployment" />
         </div>
 
         <!-- Details (edit) -->
@@ -81,7 +97,9 @@
   </div>
 
   <DeployModal v-if="modal.show" :host="host" :type="modal.type" :default-timeout="host?.defaultTimeout ?? 10"
-    @close="modal.show = false" @deployed="onDeployed" />
+    :default-deploy-command="defaultDeployCommand" @close="modal.show = false" @deployed="onDeployed" />
+
+  <DeploymentLogsModal v-if="logsModal.deployment" :deployment="logsModal.deployment" @close="logsModal.deployment = null" />
 </template>
 
 <script>
@@ -90,27 +108,39 @@ import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
 import deploymentsService from '@/services/deploymentsService'
+import adminSettingsService from '@/services/adminSettingsService'
 import StatusBadge from '@/components/StatusBadge.vue'
+import TypeBadge from '@/components/TypeBadge.vue'
 import DeployModal from '@/components/DeployModal.vue'
+import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
 import HostEditForm from '@/components/HostEditForm.vue'
-import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon } from '@/components/icons'
+import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon } from '@/components/icons'
 
 export default {
-  components: { StatusBadge, DeployModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon },
+  components: { StatusBadge, TypeBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon },
   computed: {
     ...mapStores(useToastStore),
     ...mapState(useAuthStore, ['accessToken']),
+    displayDeployment() {
+      if (this.currentDeploymentId) {
+        return this.deploymentHistory.find(d => d.id === this.currentDeploymentId) || this.activeDeployment
+      }
+      return this.viewedDeployment
+    },
   },
   data() {
     return {
       host: null,
+      defaultDeployCommand: '',
       activeTab: 'logs',
       tabs: [{ id: 'logs', label: 'Logs' }, { id: 'history', label: 'Historique' }, { id: 'details', label: 'Détails' }],
       modal: { show: false, type: 'DEPLOY' },
+      logsModal: { deployment: null },
       logContent: '',
       currentDeploymentId: null,
       activeDeployment: null,
+      viewedDeployment: null,
       deploymentHistory: [],
       histLoading: false,
       _sseSource: null,
@@ -120,6 +150,9 @@ export default {
   async mounted() {
     await this.loadHost()
     await this.loadHistory()
+    adminSettingsService.get().then(res => {
+      this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
+    }).catch(() => {})
 
     const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
     src.addEventListener('deployment.status', e => {
@@ -155,15 +188,33 @@ export default {
         const res = await deploymentsService.getHistory(this.$route.params.id)
         this.deploymentHistory = res.data.content
         const inProgress = this.deploymentHistory.find(d => d.status === 'IN_PROGRESS')
-        if (inProgress) this.startSse(inProgress.id)
-        else { this.currentDeploymentId = null; this.activeDeployment = null }
+        if (inProgress) {
+          this.startSse(inProgress.id)
+        } else {
+          this.currentDeploymentId = null
+          this.activeDeployment = null
+          // auto-display last deployment logs if none explicitly viewed
+          if (!this.viewedDeployment && this.deploymentHistory.length) {
+            const last = this.deploymentHistory[0]
+            this.viewedDeployment = last
+            this.logContent = last.logs || ''
+          }
+        }
       } finally {
         this.histLoading = false
       }
     },
+    viewDeployment(dep) {
+      this.logsModal.deployment = dep
+    },
+    formatDate(d) {
+      if (!d) return '—'
+      return new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+    },
     startSse(deploymentId) {
       this.currentDeploymentId = deploymentId
       this.activeDeployment = { id: deploymentId }
+      this.viewedDeployment = null
       if (this._sseSource) this._sseSource.close()
       const src = new EventSource(`/api/deployments/${deploymentId}/logs?token=${this.accessToken}`)
       src.addEventListener('log', e => {
@@ -197,6 +248,7 @@ export default {
       this.modal.show = false
       this.toastStore.success('Déploiement lancé')
       this.logContent = ''
+      this.viewedDeployment = null
       this.activeTab = 'logs'
       if (deployment?.id) {
         this.startSse(deployment.id)

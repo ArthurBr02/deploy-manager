@@ -83,6 +83,7 @@ export default {
     },
     adminItems() {
       return [
+        { to: '/admin/hosts', label: 'Hôtes', icon: ServerIcon },
         { to: '/admin/users', label: 'Utilisateurs', icon: UsersIcon },
         { to: '/admin/settings', label: 'Paramètres', icon: SettingsIcon },
       ]

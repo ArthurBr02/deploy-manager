@@ -3,6 +3,7 @@ package fr.arthurbr02.deploymanager.service;
 import fr.arthurbr02.deploymanager.dto.host.*;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.Role;
+import fr.arthurbr02.deploymanager.exception.ForbiddenException;
 import fr.arthurbr02.deploymanager.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class HostService {
         UserHostPermission perm = null;
         if (currentUser.getRole() != Role.ADMIN) {
             perm = permissionRepository.findByUserIdAndHostId(currentUser.getId(), id)
-                    .orElseThrow(() -> new RuntimeException("Accès refusé"));
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
         }
 
         Deployment last = deploymentRepository.findLastByHostId(id).orElse(null);
@@ -89,8 +90,8 @@ public class HostService {
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
         if (currentUser.getRole() != Role.ADMIN) {
             UserHostPermission perm = permissionRepository.findByUserIdAndHostId(currentUser.getId(), id)
-                    .orElseThrow(() -> new RuntimeException("Accès refusé"));
-            if (!perm.isCanEdit()) throw new RuntimeException("Permission insuffisante");
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+            if (!perm.isCanEdit()) throw new ForbiddenException("Permission insuffisante");
         }
         host.setName(req.name());
         host.setIp(req.ip());

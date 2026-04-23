@@ -17,6 +17,36 @@
             <p class="text-xs text-gray-400 mt-1">Variables disponibles : {host}, {ip}, {domain}</p>
           </div>
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Système d'exploitation du serveur</label>
+            <select v-model="settings.server_os" class="w-48 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
+              <option value="linux">Linux</option>
+              <option value="windows">Windows</option>
+            </select>
+            <p class="text-xs text-gray-400 mt-1">Détermine le shell utilisé pour exécuter les commandes de déploiement.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Shell Linux — exécutable</label>
+              <input v-model="settings.shell_linux_bin" placeholder="/bin/sh" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+              <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">/bin/sh</code></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Shell Linux — argument</label>
+              <input v-model="settings.shell_linux_arg" placeholder="-c" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+              <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">-c</code></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Shell Windows — exécutable</label>
+              <input v-model="settings.shell_windows_bin" placeholder="cmd.exe" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+              <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">cmd.exe</code></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Shell Windows — argument</label>
+              <input v-model="settings.shell_windows_arg" placeholder="/c" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+              <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">/c</code></p>
+            </div>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Timeout par défaut (minutes)</label>
             <input v-model="settings.default_timeout" type="number" min="0" class="w-40 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             <span class="text-xs text-gray-400 ml-2">0 = désactivé</span>
@@ -104,6 +134,11 @@ export default {
       settings: {
         default_deploy_command: 'sh /root/{host}/liv.sh',
         default_timeout: '10',
+        server_os: 'linux',
+        shell_linux_bin: '/bin/sh',
+        shell_linux_arg: '-c',
+        shell_windows_bin: 'cmd.exe',
+        shell_windows_arg: '/c',
         smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
       },
       pageLoading: false,
