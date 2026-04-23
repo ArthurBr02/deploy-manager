@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Deploy Manager — Wireframes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="tokens.css"/>
+  <style>
+    html, body, #root { height: 100%; margin: 0; }
+    body { background: #f0eee9; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel" src="screens/shell.jsx"></script>
+  <script type="text/babel" src="screens/auth.jsx"></script>
+  <script type="text/babel" src="screens/hosts-list.jsx"></script>
+  <script type="text/babel" src="screens/host-detail.jsx"></script>
+  <script type="text/babel" src="screens/deployments.jsx"></script>
+  <script type="text/babel" src="screens/admin.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accent": "#4f46e5",
+      "darkMode": false
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      React.useEffect(() => {
+        const el = document.getElementById('dm-tweaks-style') || (() => {
+          const s = document.createElement('style'); s.id = 'dm-tweaks-style'; document.head.appendChild(s); return s;
+        })();
+        el.textContent = `:root { --accent: ${t.accent}; --accent-hover: ${t.accent}; }`;
+        document.body.style.background = t.darkMode ? '#13120f' : '#f0eee9';
+        window.__dmDark = t.darkMode;
+      }, [t.accent, t.darkMode]);
+
+      return (
+        <>
+          <DesignCanvas key={t.darkMode ? 'dark' : 'light'}>
+            <DCSection id="auth" title="01 · Authentification" subtitle="Login, mot de passe oublié, réinitialisation">
+              <DCArtboard id="login"  label="Connexion"            width={960} height={720}><LoginScreen/></DCArtboard>
+              <DCArtboard id="forgot" label="Mot de passe oublié"  width={960} height={720}><ForgotScreen/></DCArtboard>
+              <DCArtboard id="reset"  label="Nouveau mot de passe" width={960} height={720}><ResetScreen/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="hosts" title="02 · Liste des hôtes" subtitle="Cartes en grille">
+              <DCArtboard id="hosts-v2" label="Liste des hôtes — cartes" width={1320} height={840}><HostsListV2/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="host-detail" title="03 · Fiche hôte + logs temps réel" subtitle="Logs inline dans la page">
+              <DCArtboard id="host-inline" label="Fiche hôte — logs inline" width={1320} height={900}><HostDetailInline/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="launch" title="04 · Lancement d'un déploiement" subtitle="Confirmation et timeout">
+              <DCArtboard id="launch-modal" label="Modale de lancement" width={1320} height={800}><DeployLaunchModal/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="history" title="05 · Historique global">
+              <DCArtboard id="deploy-history" label="/deployments — historique filtrable" width={1320} height={900}><DeploymentsHistory/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="admin-users" title="06 · Administration · Utilisateurs">
+              <DCArtboard id="users-list"   label="Liste"                                       width={1280} height={760}><AdminUsers/></DCArtboard>
+              <DCArtboard id="user-detail"  label="Fiche + permissions hôtes"                   width={1320} height={920}><AdminUserDetail/></DCArtboard>
+              <DCArtboard id="user-created" label="Création — mot de passe affiché une fois"    width={1280} height={760}><AdminUserCreated/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="admin-hosts" title="07 · Administration · Hôtes">
+              <DCArtboard id="host-create" label="Création d'un hôte"          width={1280} height={900}><AdminHostCreate/></DCArtboard>
+              <DCArtboard id="host-import" label="Import Ansible hosts-all"    width={1280} height={900}><AdminHostImport/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="settings-profile" title="08 · Paramètres & profil">
+              <DCArtboard id="settings" label="Paramètres globaux" width={1280} height={760}><AdminSettings/></DCArtboard>
+              <DCArtboard id="profile"  label="Profil personnel"   width={1280} height={720}><ProfileScreen/></DCArtboard>
+            </DCSection>
+
+            <DCSection id="states" title="09 · États particuliers">
+              <DCArtboard id="toast-stack" label="Toasts fin de déploiement" width={1280} height={640}><ToastStack/></DCArtboard>
+              <DCArtboard id="empty"       label="Aucun hôte accessible"    width={1280} height={640}><EmptyHostsScreen/></DCArtboard>
+              <DCArtboard id="error"       label="Erreur métier (409)"      width={1280} height={640}><ErrorScreen/></DCArtboard>
+              <DCArtboard id="notfound"    label="404"                       width={1280} height={640}><NotFoundScreen/></DCArtboard>
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Apparence"/>
+            <TweakToggle label="Mode sombre" value={t.darkMode} onChange={v => setTweak('darkMode', v)}/>
+            <TweakColor label="Couleur d'accent" value={t.accent} onChange={v => setTweak('accent', v)}/>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

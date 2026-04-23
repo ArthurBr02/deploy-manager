@@ -28,3 +28,6 @@ Ce fichier fournit le contexte et les règles pour travailler sur le projet **De
 - Travailler par incréments (Sprint) tels que définis dans le plan d'implémentation.
 - Toujours commencer par les fondations (Base de données > Backend API > Frontend).
 - Pour créer de nouveaux services Spring, suivre le package `fr.arthurbr02.deploymanager`.
+- Pour le design, Read the design/README file for the design to implement.
+Implement: Deploy Manager.html
+Adapte le code en utilisant les technologies et les règles définies dans ce fichier et dans les autres documents de référence. Assure-toi de suivre le plan d'implémentation et de mettre à jour le suivi de progression au fur et à mesure de l'avancement du projet.
