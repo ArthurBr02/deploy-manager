@@ -21,9 +21,9 @@
             placeholder="Rechercher (ID, hôte, utilisateur…)"
           />
         </div>
-        <select v-model="filters.host" class="border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent">
+        <select v-model="filters.hostId" class="border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent">
           <option value="">Tous les hôtes</option>
-          <option v-for="h in hosts" :key="h.id" :value="h.name">{{ h.name }}</option>
+          <option v-for="h in hosts" :key="h.id" :value="h.id">{{ h.name }}</option>
         </select>
         <select v-model="filters.status" class="border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent">
           <option value="">Tous les statuts</option>
@@ -95,7 +95,7 @@ export default {
       total: 1,
       totalElements: 0,
       stats: null,
-      filters: { search: '', host: '', status: '', type: '', period: '7d' },
+      filters: { search: '', hostId: '', status: '', type: '', period: '7d' },
       statuses: [
         { value: 'SUCCESS', label: 'Succès' },
         { value: 'FAILURE', label: 'Échec' },
@@ -127,7 +127,7 @@ export default {
     page() { this.load(); this.loadStats() },
     filters: {
       deep: true,
-      handler() { this.load(); this.loadStats() },
+      handler() { this.page = 0; this.load(); this.loadStats() },
     },
   },
   mounted() {
@@ -141,7 +141,7 @@ export default {
       try {
         const params = { page: this.page, size: 20 }
         if (this.filters.search) params.search = this.filters.search
-        if (this.filters.host) params.host = this.filters.host
+        if (this.filters.hostId) params.hostId = this.filters.hostId
         if (this.filters.status) params.status = this.filters.status
         if (this.filters.type) params.type = this.filters.type
         if (this.filters.period) params.period = this.filters.period
@@ -157,6 +157,8 @@ export default {
       try {
         const params = {}
         if (this.filters.period) params.period = this.filters.period
+        if (this.filters.hostId) params.hostId = this.filters.hostId
+        if (this.filters.type) params.type = this.filters.type
         const res = await deploymentsService.getStats(params)
         this.stats = res.data
       } catch {
@@ -173,7 +175,7 @@ export default {
     },
     resetFilters() {
       this.filters.search = ''
-      this.filters.host = ''
+      this.filters.hostId = ''
       this.filters.status = ''
       this.filters.type = ''
       this.filters.period = '7d'
@@ -185,7 +187,7 @@ export default {
     async exportCsv() {
       const params = {}
       if (this.filters.search) params.search = this.filters.search
-      if (this.filters.host) params.host = this.filters.host
+      if (this.filters.hostId) params.hostId = this.filters.hostId
       if (this.filters.status) params.status = this.filters.status
       if (this.filters.type) params.type = this.filters.type
       if (this.filters.period) params.period = this.filters.period

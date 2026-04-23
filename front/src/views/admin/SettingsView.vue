@@ -24,7 +24,7 @@
             </select>
             <p class="text-xs text-gray-400 mt-1">Détermine le shell utilisé pour exécuter les commandes de déploiement.</p>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div v-if="settings.server_os === 'linux'" class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Shell Linux — exécutable</label>
               <input v-model="settings.shell_linux_bin" placeholder="/bin/sh" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -35,6 +35,8 @@
               <input v-model="settings.shell_linux_arg" placeholder="-c" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
               <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">-c</code></p>
             </div>
+          </div>
+          <div v-else-if="settings.server_os === 'windows'" class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Shell Windows — exécutable</label>
               <input v-model="settings.shell_windows_bin" placeholder="cmd.exe" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />

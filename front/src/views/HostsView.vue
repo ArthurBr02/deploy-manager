@@ -66,7 +66,7 @@ export default {
     ...mapState(useAuthStore, ['accessToken']),
     filtered() {
       return this.hosts.filter(h =>
-        h.name.toLowerCase().includes(this.search.toLowerCase()) || h.ip.includes(this.search)
+        h.name?.toLowerCase().includes(this.search.toLowerCase()) || h.ip?.includes(this.search)
       )
     },
   },

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -56,8 +57,27 @@ public class DeploymentController {
 
     @GetMapping("/stats")
     @Operation(summary = "Statistiques des déploiements sur une période")
-    public ResponseEntity<DeploymentStatsResponse> stats(@RequestParam(required = false) String period) {
-        return ResponseEntity.ok(deploymentService.getStats(period));
+    public ResponseEntity<DeploymentStatsResponse> stats(
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) UUID hostId,
+            @RequestParam(required = false) String type) {
+        return ResponseEntity.ok(deploymentService.getStats(period, hostId, type));
+    }
+
+    @GetMapping("/export")
+    @Operation(summary = "Exporter les déploiements en CSV")
+    public ResponseEntity<byte[]> exportCsv(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) UUID hostId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String period) {
+        byte[] csv = deploymentService.exportCsv(user, hostId, search, status, type, period);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"deployments.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csv);
     }
 
     @GetMapping
@@ -65,10 +85,12 @@ public class DeploymentController {
     public ResponseEntity<Page<DeploymentResponse>> list(
             @AuthenticationPrincipal User user,
             @RequestParam(required = false) UUID hostId,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String period,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(deploymentService.findAll(user, hostId, status, type, page, size));
+        return ResponseEntity.ok(deploymentService.findAll(user, hostId, search, status, type, period, page, size));
     }
 }

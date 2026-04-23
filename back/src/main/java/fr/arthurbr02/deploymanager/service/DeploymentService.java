@@ -20,6 +20,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import jakarta.persistence.criteria.JoinType;
+
 import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDateTime;
@@ -276,31 +278,44 @@ public class DeploymentService {
     }
 
     @Transactional(readOnly = true)
-    public DeploymentStatsResponse getStats(String period) {
-        LocalDateTime since = switch (period == null ? "" : period) {
+    public DeploymentStatsResponse getStats(String period, UUID hostId, String type) {
+        LocalDateTime since = parsePeriod(period);
+        DeploymentType deploymentType = parseType(type);
+
+        long total      = deploymentRepository.count(statsSpec(since, hostId, deploymentType, null));
+        long success    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.SUCCESS));
+        long failure    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.FAILURE));
+        long inProgress = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.IN_PROGRESS));
+
+        Double medianSec = deploymentRepository.medianDurationFiltered(since, hostId, type);
+        String medianDuration = formatMedianDuration(medianSec);
+
+        return new DeploymentStatsResponse(total, success, failure, inProgress, medianDuration);
+    }
+
+    private Specification<Deployment> statsSpec(LocalDateTime since, UUID hostId, DeploymentType type, DeploymentStatus status) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
+            if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
+            if (type != null) predicates.add(cb.equal(root.get("type"), type));
+            if (status != null) predicates.add(cb.equal(root.get("status"), status));
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+    }
+
+    private LocalDateTime parsePeriod(String period) {
+        return switch (period == null ? "" : period) {
             case "24h" -> LocalDateTime.now().minusHours(24);
             case "7d"  -> LocalDateTime.now().minusDays(7);
             case "30d" -> LocalDateTime.now().minusDays(30);
             default    -> null;
         };
+    }
 
-        long total, success, failure, inProgress;
-        if (since != null) {
-            total      = deploymentRepository.countByCreatedAtAfter(since);
-            success    = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.SUCCESS);
-            failure    = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.FAILURE);
-            inProgress = deploymentRepository.countByCreatedAtAfterAndStatus(since, DeploymentStatus.IN_PROGRESS);
-        } else {
-            total      = deploymentRepository.count();
-            success    = deploymentRepository.countByStatus(DeploymentStatus.SUCCESS);
-            failure    = deploymentRepository.countByStatus(DeploymentStatus.FAILURE);
-            inProgress = deploymentRepository.countByStatus(DeploymentStatus.IN_PROGRESS);
-        }
-
-        Double medianSec = deploymentRepository.medianDurationSeconds(since);
-        String medianDuration = formatMedianDuration(medianSec);
-
-        return new DeploymentStatsResponse(total, success, failure, inProgress, medianDuration);
+    private DeploymentType parseType(String type) {
+        if (type == null || type.isBlank()) return null;
+        try { return DeploymentType.valueOf(type); } catch (Exception e) { return null; }
     }
 
     private String formatMedianDuration(Double seconds) {
@@ -309,13 +324,50 @@ public class DeploymentService {
         return String.format("%d min %02d s", s / 60, s % 60);
     }
 
-    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, String status, String type, int page, int size) {
+    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, String search, String status, String type, String period, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Specification<Deployment> spec = buildSpec(currentUser, hostId, status, type);
+        Specification<Deployment> spec = buildSpec(currentUser, hostId, search, status, type, period);
         return deploymentRepository.findAll(spec, pageable).map(d -> DeploymentResponse.from(loadWithJoins(d)));
     }
 
-    private Specification<Deployment> buildSpec(User user, UUID hostId, String status, String type) {
+    public byte[] exportCsv(User currentUser, UUID hostId, String search, String status, String type, String period) {
+        Specification<Deployment> spec = buildSpec(currentUser, hostId, search, status, type, period);
+        Sort sort = Sort.by("createdAt").descending();
+        List<Deployment> deployments = deploymentRepository.findAll(spec, sort);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID,Hôte,Utilisateur,Type,Statut,Créé le,Terminé le,Durée (s)\n");
+        for (Deployment d : deployments) {
+            Deployment full = loadWithJoins(d);
+            String hostName = full.getHost() != null ? full.getHost().getName() : "";
+            String userEmail = full.getUser() != null ? full.getUser().getEmail() : "";
+            String duration = "";
+            if (full.getCreatedAt() != null && full.getFinishedAt() != null) {
+                long secs = java.time.Duration.between(full.getCreatedAt(), full.getFinishedAt()).getSeconds();
+                duration = String.valueOf(secs);
+            }
+            sb.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
+                    full.getId(),
+                    escapeCsv(hostName),
+                    escapeCsv(userEmail),
+                    full.getType(),
+                    full.getStatus(),
+                    full.getCreatedAt() != null ? full.getCreatedAt() : "",
+                    full.getFinishedAt() != null ? full.getFinishedAt() : "",
+                    duration));
+        }
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private Specification<Deployment> buildSpec(User user, UUID hostId, String search, String status, String type, String period) {
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (user.getRole() != Role.ADMIN) {
@@ -323,9 +375,23 @@ public class DeploymentService {
                         .map(UserHostPermission::getHostId).collect(Collectors.toList());
                 predicates.add(root.get("hostId").in(accessibleHostIds));
             }
+            LocalDateTime since = parsePeriod(period);
+            if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
             if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
             if (status != null && !status.isBlank()) predicates.add(cb.equal(root.get("status"), DeploymentStatus.valueOf(status)));
             if (type != null && !type.isBlank()) predicates.add(cb.equal(root.get("type"), DeploymentType.valueOf(type)));
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                var hostJoin = root.join("host", JoinType.LEFT);
+                var userJoin = root.join("user", JoinType.LEFT);
+                predicates.add(cb.or(
+                    cb.like(cb.lower(hostJoin.get("name")), pattern),
+                    cb.like(cb.lower(userJoin.get("email")), pattern),
+                    cb.like(cb.lower(userJoin.get("firstName")), pattern),
+                    cb.like(cb.lower(userJoin.get("lastName")), pattern),
+                    cb.like(cb.lower(root.get("id").as(String.class)), pattern)
+                ));
+            }
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
     }
