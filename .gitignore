@@ -1,0 +1,29 @@
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Backend
+back/target/
+back/.mvn/
+back/*.iml
+back/logs/
+
+# Frontend
+front/node_modules/
+front/dist/
+front/.vite/
+
+# Logs de déploiement
+logs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
