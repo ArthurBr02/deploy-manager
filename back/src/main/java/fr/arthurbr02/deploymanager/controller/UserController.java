@@ -51,8 +51,8 @@ public class UserController {
 
     @DeleteMapping("/admin/users/{id}")
     @Operation(summary = "Supprimer un utilisateur (admin, soft delete)")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        userService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal User currentUser) {
+        userService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 

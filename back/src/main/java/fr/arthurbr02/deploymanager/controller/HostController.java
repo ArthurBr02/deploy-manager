@@ -50,8 +50,8 @@ public class HostController {
 
     @DeleteMapping("/admin/hosts/{id}")
     @Operation(summary = "Supprimer un hôte (admin, soft delete)")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        hostService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal User currentUser) {
+        hostService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 

@@ -5,6 +5,10 @@ import fr.arthurbr02.deploymanager.enums.DeploymentType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,6 +16,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "deployments")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Deployment {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -43,8 +48,20 @@ public class Deployment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private UUID createdBy;
+
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private UUID updatedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "host_id", insertable = false, updatable = false)

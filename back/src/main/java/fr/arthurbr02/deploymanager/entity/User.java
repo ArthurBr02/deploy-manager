@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,6 +15,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "users")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class User {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -45,4 +49,15 @@ public class User {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private UUID createdBy;
+
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private UUID updatedBy;
+
+    @Column(name = "deleted_by")
+    private UUID deletedBy;
 }

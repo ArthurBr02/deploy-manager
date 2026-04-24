@@ -104,10 +104,11 @@ public class HostService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, User currentUser) {
         Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
         host.setDeletedAt(LocalDateTime.now());
+        host.setDeletedBy(currentUser.getId());
         hostRepository.save(host);
     }
 

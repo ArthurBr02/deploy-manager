@@ -73,13 +73,14 @@ public class UserService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, User currentUser) {
         User user = userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         if (user.getRole() == Role.ADMIN && userRepository.countByRoleAndDeletedAtIsNull(Role.ADMIN) <= 1) {
             throw new RuntimeException("Impossible de supprimer le dernier administrateur");
         }
         user.setDeletedAt(LocalDateTime.now());
+        user.setDeletedBy(currentUser.getId());
         userRepository.save(user);
     }
 

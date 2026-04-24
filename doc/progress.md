@@ -55,6 +55,7 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] UI Notifications Toasts fin de déploiement
 
 ### Sprint 9 : Tests, Corrections et Déploiement
+- [x] Ajout des champs d'audit (created_by, updated_by, deleted_by) aux entités
 - [ ] Sécurité et tests unitaires
 - [x] Dockerisation (Dockerfile back/front, docker-compose, nginx.conf, .env.example)
 

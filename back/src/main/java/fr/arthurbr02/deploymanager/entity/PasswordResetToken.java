@@ -3,6 +3,8 @@ package fr.arthurbr02.deploymanager.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -10,6 +12,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "password_reset_tokens")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class PasswordResetToken {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -29,4 +32,8 @@ public class PasswordResetToken {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private UUID createdBy;
 }
