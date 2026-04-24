@@ -113,9 +113,8 @@ export default {
       error: '',
     }
   },
-  async mounted() {
-    try {
-      const res = await hostsService.getById(this.$route.params.id)
+  mounted() {
+    hostsService.getById(this.$route.params.id).then(res => {
       this.host = res.data
       if (res.data.canEdit) {
         this.form = {
@@ -128,33 +127,32 @@ export default {
           defaultTimeout: res.data.defaultTimeout ?? null,
         }
       }
-    } finally {
+    }).finally(() => {
       this.loading = false
-    }
+    })
   },
   methods: {
-    async save() {
+    save() {
       this.error = ''
       if (!this.form.name || !this.form.ip) {
         this.error = "Le nom et l'adresse IP sont obligatoires."
         return
       }
       this.saving = true
-      try {
-        await hostsService.update(this.$route.params.id, {
-          ...this.form,
-          deploymentCommand: this.form.deploymentCommand || null,
-          generateCommand: this.form.generateCommand || null,
-          deliverCommand: this.form.deliverCommand || null,
-          domain: this.form.domain || null,
-        })
+      hostsService.update(this.$route.params.id, {
+        ...this.form,
+        deploymentCommand: this.form.deploymentCommand || null,
+        generateCommand: this.form.generateCommand || null,
+        deliverCommand: this.form.deliverCommand || null,
+        domain: this.form.domain || null,
+      }).then(() => {
         this.toastStore.success('Hôte mis à jour')
         this.$router.push(`/hosts/${this.$route.params.id}`)
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur lors de la sauvegarde'
-      } finally {
+      }).finally(() => {
         this.saving = false
-      }
+      })
     },
   },
 }

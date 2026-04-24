@@ -156,26 +156,24 @@ export default {
     this.load()
   },
   methods: {
-    async load() {
+    load() {
       this.pageLoading = true
-      try {
-        const res = await adminSettingsService.get()
+      adminSettingsService.get().then(res => {
         Object.assign(this.settings, res.data.settings)
-      } finally {
+      }).finally(() => {
         this.pageLoading = false
-      }
+      })
     },
-    async save() {
+    save() {
       this.saving = true
       this.saveError = ''
-      try {
-        await adminSettingsService.update({ ...this.settings })
+      adminSettingsService.update({ ...this.settings }).then(() => {
         this.toastStore.success('Paramètres enregistrés')
-      } catch (e) {
+      }).catch(e => {
         this.saveError = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.saving = false
-      }
+      })
     },
     onDragEnter() {
       this.dragCounter++
@@ -198,15 +196,14 @@ export default {
       const file = event.target.files[0]
       if (file) this.uploadFile(file)
     },
-    async uploadFile(file) {
+    uploadFile(file) {
       this.importResult = null
       this.importError = ''
-      try {
-        const res = await hostsService.importAnsible(file)
+      hostsService.importAnsible(file).then(res => {
         this.importResult = res.data
-      } catch (e) {
+      }).catch(e => {
         this.importError = e.response?.data?.error || "Erreur lors de l'import"
-      }
+      })
     },
   },
 }

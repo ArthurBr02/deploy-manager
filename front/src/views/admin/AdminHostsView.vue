@@ -79,24 +79,22 @@ export default {
     this.load()
   },
   methods: {
-    async load() {
+    load() {
       this.loading = true
-      try {
-        const res = await hostsService.getAll()
+      hostsService.getAll().then(res => {
         this.hosts = res.data
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
-    async deleteHost(host) {
+    deleteHost(host) {
       if (!confirm(`Supprimer l'hôte "${host.name}" ? Cette action est irréversible.`)) return
-      try {
-        await hostsService.delete(host.id)
+      hostsService.delete(host.id).then(() => {
         this.toastStore.success('Hôte supprimé')
-        await this.load()
-      } catch (e) {
+        return this.load()
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || 'Erreur lors de la suppression')
-      }
+      })
     },
   },
 }

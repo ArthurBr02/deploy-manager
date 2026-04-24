@@ -25,12 +25,7 @@
           <tbody>
             <tr v-for="u in users" :key="u.id" class="border-b border-warm-border/50 hover:bg-warm-muted/40">
               <td class="py-3 px-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-accent flex items-center justify-center text-white text-xs font-semibold">
-                    {{ (u.firstName[0] + u.lastName[0]).toUpperCase() }}
-                  </div>
-                  <span class="font-medium text-gray-900">{{ u.firstName }} {{ u.lastName }}</span>
-                </div>
+                <UserBadge :user="u" />
               </td>
               <td class="py-3 px-4 text-gray-500">{{ u.email }}</td>
               <td class="py-3 px-4">
@@ -103,9 +98,10 @@ import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
 import adminUsersService from '@/services/adminUsersService'
 import { PlusIcon, EditIcon, TrashIcon } from '@/components/icons'
+import UserBadge from '@/components/UserBadge.vue'
 
 export default {
-  components: { PlusIcon, EditIcon, TrashIcon },
+  components: { PlusIcon, EditIcon, TrashIcon, UserBadge },
   computed: {
     ...mapStores(useToastStore),
   },
@@ -124,27 +120,25 @@ export default {
     this.load()
   },
   methods: {
-    async load() {
+    load() {
       this.loading = true
-      try {
-        const res = await adminUsersService.getAll()
+      return adminUsersService.getAll().then(res => {
         this.users = res.data
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
-    async createUser() {
+    createUser() {
       this.creating = true
       this.createError = ''
-      try {
-        const res = await adminUsersService.create(this.newUser)
+      adminUsersService.create(this.newUser).then(res => {
         this.createdUser = res.data
-        await this.load()
-      } catch (e) {
+        return this.load()
+      }).catch(e => {
         this.createError = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.creating = false
-      }
+      })
     },
     closeCreate() {
       this.showCreate = false
@@ -152,15 +146,14 @@ export default {
       this.createError = ''
       Object.assign(this.newUser, { firstName: '', lastName: '', email: '', role: 'USER' })
     },
-    async deleteUser(u) {
+    deleteUser(u) {
       if (!confirm(`Supprimer ${u.firstName} ${u.lastName} ?`)) return
-      try {
-        await adminUsersService.delete(u.id)
+      adminUsersService.delete(u.id).then(() => {
         this.toastStore.success('Utilisateur supprimé')
-        await this.load()
-      } catch (e) {
+        return this.load()
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || 'Erreur')
-      }
+      })
     },
     formatDate(d) {
       return new Date(d).toLocaleDateString('fr-FR')

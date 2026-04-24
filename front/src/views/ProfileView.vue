@@ -11,10 +11,7 @@
 
           <!-- Avatar -->
           <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center bg-gradient-to-br from-purple-500 to-accent text-white text-lg font-semibold">
-              <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="w-full h-full object-cover" alt="avatar" />
-              <span v-else>{{ userInitials }}</span>
-            </div>
+            <UserAvatar :user="authStore.user" size="56px" text-class="text-lg" />
             <div class="flex flex-col gap-1.5">
               <label class="cursor-pointer">
                 <input type="file" accept="image/*" class="hidden" @change="uploadAvatar" :disabled="uploadingAvatar" />
@@ -117,9 +114,10 @@ import { useToastStore } from '@/stores/toast'
 import profileService from '@/services/profileService'
 import tokensService from '@/services/tokensService'
 import { TrashIcon } from '@/components/icons'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 export default {
-  components: { TrashIcon },
+  components: { TrashIcon, UserAvatar },
   computed: {
     ...mapStores(useAuthStore, useToastStore),
     userInitials() {
@@ -150,38 +148,37 @@ export default {
     this.loadTokens()
   },
   methods: {
-    async loadTokens() {
-      try {
-        const res = await tokensService.list()
+    loadTokens() {
+      return tokensService.list().then(res => {
         this.tokens = res.data
-      } catch (e) {
+      }).catch(e => {
         console.error('Failed to load tokens', e)
-      }
+      })
     },
-    async createToken() {
+    createToken() {
       this.creatingToken = true
       this.newToken = null
-      try {
-        const res = await tokensService.create(this.tokenForm)
+      tokensService.create(this.tokenForm).then(res => {
         this.newToken = res.data.token
         this.tokenForm.name = ''
-        await this.loadTokens()
+        return this.loadTokens()
+      }).then(() => {
         this.toastStore.success('Token généré')
-      } catch (e) {
+      }).catch(() => {
         this.toastStore.error("Erreur lors de la génération du token")
-      } finally {
+      }).finally(() => {
         this.creatingToken = false
-      }
+      })
     },
-    async deleteToken(id) {
+    deleteToken(id) {
       if (!confirm('Voulez-vous vraiment révoquer ce token ?')) return
-      try {
-        await tokensService.delete(id)
-        await this.loadTokens()
+      tokensService.delete(id).then(() => {
+        return this.loadTokens()
+      }).then(() => {
         this.toastStore.success('Token révoqué')
-      } catch (e) {
+      }).catch(() => {
         this.toastStore.error("Erreur lors de la révocation")
-      }
+      })
     },
     copyNewToken() {
       navigator.clipboard.writeText(this.newToken)
@@ -197,59 +194,58 @@ export default {
         minute: '2-digit',
       })
     },
-    async saveProfile() {
+    saveProfile() {
       this.savingProfile = true
       this.profileError = ''
-      try {
-        await profileService.update(this.form)
-        await this.authStore.refreshProfile()
+      profileService.update(this.form).then(() => {
+        return this.authStore.refreshProfile()
+      }).then(() => {
         this.toastStore.success('Profil mis à jour')
-      } catch (e) {
+      }).catch(e => {
         this.profileError = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.savingProfile = false
-      }
+      })
     },
-    async changePassword() {
+    changePassword() {
       this.savingPw = true
       this.pwError = ''
-      try {
-        await profileService.changePassword(this.pwForm)
+      profileService.changePassword(this.pwForm).then(() => {
         this.toastStore.success('Mot de passe modifié')
         this.pwForm.currentPassword = ''
         this.pwForm.newPassword = ''
-      } catch (e) {
+      }).catch(e => {
         this.pwError = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.savingPw = false
-      }
+      })
     },
-    async uploadAvatar(event) {
+    uploadAvatar(event) {
       const file = event.target.files[0]
       if (!file) return
       this.uploadingAvatar = true
-      try {
-        await profileService.uploadAvatar(file)
-        await this.authStore.refreshProfile()
+      profileService.uploadAvatar(file).then(() => {
+        return this.authStore.refreshProfile()
+      }).then(() => {
         this.toastStore.success('Avatar mis à jour')
-      } catch (e) {
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || "Erreur lors de l'upload")
-      } finally {
+      }).finally(() => {
         this.uploadingAvatar = false
         event.target.value = ''
-      }
+      })
     },
-    async deleteAvatar() {
+    deleteAvatar() {
       this.deletingAvatar = true
-      try {
-        await profileService.deleteAvatar()
-        await this.authStore.refreshProfile()
+      profileService.deleteAvatar().then(() => {
+        return this.authStore.refreshProfile()
+      }).then(() => {
         this.toastStore.success('Avatar supprimé')
-      } catch (e) {
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || 'Erreur lors de la suppression')
-      } finally {
+      }).finally(() => {
         this.deletingAvatar = false
-      }
+      })
     },
   },
 }

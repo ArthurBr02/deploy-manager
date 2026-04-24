@@ -10,37 +10,39 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!accessToken.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
-  async function login(email, password) {
-    const res = await authService.login(email, password)
-    accessToken.value = res.data.accessToken
-    user.value = res.data.user
-    router.push({ name: 'hosts' })
+  function login(email, password) {
+    return authService.login(email, password).then(res => {
+      accessToken.value = res.data.accessToken
+      user.value = res.data.user
+      router.push({ name: 'hosts' })
+    })
   }
 
-  async function logout() {
-    try { await authService.logout() } catch {}
-    accessToken.value = null
-    user.value = null
-    router.push({ name: 'login' })
+  function logout() {
+    return authService.logout().catch(() => {}).then(() => {
+      accessToken.value = null
+      user.value = null
+      router.push({ name: 'login' })
+    })
   }
 
-  async function refreshProfile() {
-    const res = await authService.getProfile()
-    user.value = res.data
+  function refreshProfile() {
+    return authService.getProfile().then(res => {
+      user.value = res.data
+    })
   }
 
-  async function tryRestoreSession() {
-    try {
-      const r = await authService.refresh()
+  function tryRestoreSession() {
+    return authService.refresh().then(r => {
       accessToken.value = r.data.accessToken
       if (r.data.user) {
         user.value = r.data.user
       } else {
-        await refreshProfile()
+        return refreshProfile()
       }
-    } catch {
+    }).catch(() => {
       // No valid refresh token cookie — user stays logged out
-    }
+    })
   }
 
   return { accessToken, user, isAuthenticated, isAdmin, login, logout, refreshProfile, tryRestoreSession }

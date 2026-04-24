@@ -35,17 +35,16 @@ export default {
     }
   },
   methods: {
-    async submit() {
+    submit() {
       this.loading = true
       this.error = ''
-      try {
-        await authService.resetPassword(this.$route.query.token, this.password)
+      authService.resetPassword(this.$route.query.token, this.password).then(() => {
         this.done = true
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Token invalide'
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
   },
 }

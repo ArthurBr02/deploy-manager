@@ -18,7 +18,7 @@ let refreshing = null
 
 api.interceptors.response.use(
   res => res,
-  async err => {
+  err => {
     const original = err.config
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
@@ -33,12 +33,14 @@ api.interceptors.response.use(
           refreshing = null
         })
       }
-      await refreshing
-      const auth = useAuthStore()
-      if (auth.accessToken) {
-        original.headers.Authorization = `Bearer ${auth.accessToken}`
-        return api(original)
-      }
+      return refreshing.then(() => {
+        const auth = useAuthStore()
+        if (auth.accessToken) {
+          original.headers.Authorization = `Bearer ${auth.accessToken}`
+          return api(original)
+        }
+        return Promise.reject(err)
+      })
     }
     return Promise.reject(err)
   }

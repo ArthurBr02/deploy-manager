@@ -4,16 +4,17 @@ import axios from '@/api/axios'
 
 export function useDeploymentEvents(onEvent) {
   let src = null
+  let destroyed = false
+  let retryTimer = null
 
-  const connect = async () => {
-    try {
-      // 1. Get temporary SSE token
-      const { data } = await axios.post('/deployments/sse-token')
+  const connect = () => {
+    if (destroyed) return
+    axios.post('/deployments/sse-token').then(({ data }) => {
+      if (destroyed) return
       const token = data.token
 
-      // 2. Open EventSource with this token
       src = new EventSource(`/api/deployments/events?token=${token}`)
-      
+
       src.addEventListener('open', () => console.log('[SSE] connected'))
       src.addEventListener('deployment.status', e => {
         try {
@@ -25,13 +26,12 @@ export function useDeploymentEvents(onEvent) {
       })
       src.addEventListener('error', e => {
         console.error('[SSE] error:', e)
-        if (src) src.close()
-        // Simple retry after error
-        setTimeout(connect, 3000)
+        if (src) { src.close(); src = null }
+        if (!destroyed) retryTimer = setTimeout(connect, 3000)
       })
-    } catch (err) {
+    }).catch(err => {
       console.error('[SSE] failed to get token:', err)
-    }
+    })
   }
 
   onMounted(() => {
@@ -39,6 +39,8 @@ export function useDeploymentEvents(onEvent) {
   })
 
   onUnmounted(() => {
+    destroyed = true
+    clearTimeout(retryTimer)
     if (src) { src.close(); src = null }
   })
 }

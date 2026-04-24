@@ -42,17 +42,16 @@ export default {
     }
   },
   methods: {
-    async submit() {
+    submit() {
       this.loading = true
       this.error = ''
-      try {
-        await authService.forgotPassword(this.email)
+      authService.forgotPassword(this.email).then(() => {
         this.sent = true
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
   },
 }

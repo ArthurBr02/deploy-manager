@@ -6,7 +6,7 @@
           <span class="font-semibold text-gray-900 font-mono text-sm">#{{ shortId(deployment.id) }}</span>
           <TypeBadge :type="deployment.type" />
           <StatusBadge :status="currentStatus" />
-          <span class="text-sm text-gray-500">{{ deployment.userFirstName }} {{ deployment.userLastName }}</span>
+          <UserBadge :user="{ firstName: deployment.userFirstName, lastName: deployment.userLastName, avatar: deployment.userAvatar }" />
           <span class="text-sm text-gray-400">{{ formatDate(deployment.createdAt) }}</span>
           <span v-if="deployment.durationSeconds != null" class="text-xs font-mono text-gray-400">{{ formatDuration(deployment.durationSeconds) }}</span>
           <span v-if="isStreaming" class="flex items-center gap-1.5 text-status-progress text-xs animate-pulse">
@@ -29,11 +29,12 @@ import { mapState } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
+import UserBadge from '@/components/UserBadge.vue'
 import { XIcon } from '@/components/icons'
 import axios from '@/api/axios'
 
 export default {
-  components: { StatusBadge, TypeBadge, XIcon },
+  components: { StatusBadge, TypeBadge, UserBadge, XIcon },
   props: {
     deployment: { type: Object, required: true },
   },
@@ -65,11 +66,10 @@ export default {
       this.stopSse()
       this.$emit('close')
     },
-    async startSse() {
+    startSse() {
       this.isStreaming = true
       this.currentStatus = 'IN_PROGRESS'
-      try {
-        const { data } = await axios.post('/deployments/sse-token')
+      axios.post('/deployments/sse-token').then(({ data }) => {
         const token = data.token
         const src = new EventSource(`/api/deployments/${this.deployment.id}/logs?token=${token}`)
         src.addEventListener('log', e => {
@@ -88,10 +88,10 @@ export default {
           this._sse = null
         })
         this._sse = src
-      } catch (err) {
+      }).catch(err => {
         console.error('[SSE] Failed to get log token', err)
         this.isStreaming = false
-      }
+      })
     },
     stopSse() {
       if (this._sse) {

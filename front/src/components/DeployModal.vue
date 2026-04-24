@@ -63,17 +63,16 @@ export default {
     },
   },
   methods: {
-    async launch() {
+    launch() {
       this.loading = true
       this.error = ''
-      try {
-        const res = await deploymentsService.launch(this.host.id, { type: this.type, timeout: this.timeout })
+      deploymentsService.launch(this.host.id, { type: this.type, timeout: this.timeout }).then(res => {
         this.$emit('deployed', res.data)
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur lors du lancement'
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
   },
 }

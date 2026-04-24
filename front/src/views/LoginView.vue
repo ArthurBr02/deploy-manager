@@ -49,16 +49,14 @@ export default {
     }
   },
   methods: {
-    async submit() {
+    submit() {
       this.error = ''
       this.loading = true
-      try {
-        await this.authStore.login(this.email, this.password)
-      } catch (e) {
+      this.authStore.login(this.email, this.password).catch(e => {
         this.error = e.response?.data?.error || 'Identifiants invalides'
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
   },
 }

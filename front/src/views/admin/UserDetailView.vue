@@ -82,49 +82,48 @@ export default {
       error: '',
     }
   },
-  async mounted() {
+  mounted() {
     const id = this.$route.params.id
-    const [userRes, hostsRes, permsRes] = await Promise.all([
+    Promise.all([
       adminUsersService.getById(id),
       hostsService.getAll(),
       adminUsersService.getPermissions(id),
-    ])
-    this.user = userRes.data
-    this.form.firstName = userRes.data.firstName
-    this.form.lastName = userRes.data.lastName
-    this.form.role = userRes.data.role
-    this.hosts = hostsRes.data
-    this.permissions = permsRes.data
+    ]).then(([userRes, hostsRes, permsRes]) => {
+      this.user = userRes.data
+      this.form.firstName = userRes.data.firstName
+      this.form.lastName = userRes.data.lastName
+      this.form.role = userRes.data.role
+      this.hosts = hostsRes.data
+      this.permissions = permsRes.data
+    })
   },
   methods: {
     getPerm(hostId, field) {
       return this.permissions.find(p => p.hostId === hostId)?.[field] || false
     },
-    async togglePerm(hostId, field, value) {
+    togglePerm(hostId, field, value) {
       const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false }
       const updated = { ...existing, [field]: value }
-      try {
-        await adminUsersService.setPermission(this.$route.params.id, { hostId, canDeploy: updated.canDeploy, canEdit: updated.canEdit })
+      adminUsersService.setPermission(this.$route.params.id, { hostId, canDeploy: updated.canDeploy, canEdit: updated.canEdit }).then(() => {
         const idx = this.permissions.findIndex(p => p.hostId === hostId)
         if (idx >= 0) this.permissions[idx] = updated
         else this.permissions.push(updated)
         this.toastStore.success('Permissions mises à jour')
-      } catch (e) {
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || 'Erreur')
-      }
+      })
     },
-    async save() {
+    save() {
       this.saving = true
       this.error = ''
-      try {
-        const res = await adminUsersService.update(this.$route.params.id, this.form)
+      adminUsersService.update(this.$route.params.id, this.form).then(res => {
         this.user = res.data
         this.toastStore.success('Utilisateur mis à jour')
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.saving = false
-      }
+      })
     },
   },
 }

@@ -65,9 +65,7 @@
           <div v-else class="space-y-3">
             <!-- Deployment metadata banner -->
             <div v-if="viewedDeployment || currentDeploymentId" class="bg-white border border-warm-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-              <span class="text-gray-400">
-                <span class="font-medium text-gray-700">{{ displayDeployment?.userFirstName }} {{ displayDeployment?.userLastName }}</span>
-              </span>
+              <UserBadge v-if="displayDeployment" :user="{ firstName: displayDeployment.userFirstName, lastName: displayDeployment.userLastName, avatar: displayDeployment.userAvatar }" />
               <span class="text-gray-400">{{ formatDate(displayDeployment?.createdAt) }}</span>
               <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
               <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
@@ -111,6 +109,7 @@ import deploymentsService from '@/services/deploymentsService'
 import adminSettingsService from '@/services/adminSettingsService'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
+import UserBadge from '@/components/UserBadge.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
@@ -118,7 +117,7 @@ import HostEditForm from '@/components/HostEditForm.vue'
 import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon } from '@/components/icons'
 
 export default {
-  components: { StatusBadge, TypeBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon },
+  components: { StatusBadge, TypeBadge, UserBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon },
   computed: {
     ...mapStores(useToastStore),
     ...mapState(useAuthStore, ['accessToken']),
@@ -145,47 +144,51 @@ export default {
       histLoading: false,
       _sseSource: null,
       _eventSrc: null,
+      _destroyed: false,
     }
   },
-  async mounted() {
-    await this.loadHost()
-    await this.loadHistory()
-    adminSettingsService.get().then(res => {
-      this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
-    }).catch(() => {})
-
-    const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
-    src.addEventListener('deployment.status', e => {
-      try {
-        const { hostId, deploymentId, status } = JSON.parse(e.data)
-        if (hostId !== this.$route.params.id) return
-        this.loadHost()
-        if (status === 'IN_PROGRESS') {
-          if (this.currentDeploymentId !== deploymentId) {
-            this.logContent = ''
-            this.activeTab = 'logs'
-            this.startSse(deploymentId)
-          }
-        } else {
-          this.loadHistory()
-        }
-      } catch {}
-    })
-    this._eventSrc = src
+  mounted() {
+    this.loadHost()
+      .then(() => this.loadHistory())
+      .then(() => {
+        if (this._destroyed) return
+        adminSettingsService.get().then(res => {
+          this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
+        }).catch(() => {})
+        const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
+        src.addEventListener('deployment.status', e => {
+          try {
+            const { hostId, deploymentId, status } = JSON.parse(e.data)
+            if (hostId !== this.$route.params.id) return
+            this.loadHost()
+            if (status === 'IN_PROGRESS') {
+              if (this.currentDeploymentId !== deploymentId) {
+                this.logContent = ''
+                this.activeTab = 'logs'
+                this.startSse(deploymentId)
+              }
+            } else {
+              this.loadHistory()
+            }
+          } catch {}
+        })
+        this._eventSrc = src
+      })
   },
   unmounted() {
+    this._destroyed = true
     if (this._sseSource) this._sseSource.close()
     if (this._eventSrc) this._eventSrc.close()
   },
   methods: {
-    async loadHost() {
-      const res = await hostsService.getById(this.$route.params.id)
-      this.host = res.data
+    loadHost() {
+      return hostsService.getById(this.$route.params.id).then(res => {
+        this.host = res.data
+      })
     },
-    async loadHistory() {
+    loadHistory() {
       this.histLoading = true
-      try {
-        const res = await deploymentsService.getHistory(this.$route.params.id)
+      return deploymentsService.getHistory(this.$route.params.id).then(res => {
         this.deploymentHistory = res.data.content
         const inProgress = this.deploymentHistory.find(d => d.status === 'IN_PROGRESS')
         if (inProgress) {
@@ -193,16 +196,15 @@ export default {
         } else {
           this.currentDeploymentId = null
           this.activeDeployment = null
-          // auto-display last deployment logs if none explicitly viewed
           if (!this.viewedDeployment && this.deploymentHistory.length) {
             const last = this.deploymentHistory[0]
             this.viewedDeployment = last
             this.logContent = last.logs || ''
           }
         }
-      } finally {
+      }).finally(() => {
         this.histLoading = false
-      }
+      })
     },
     viewDeployment(dep) {
       this.logsModal.deployment = dep
@@ -212,6 +214,7 @@ export default {
       return new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
     },
     startSse(deploymentId) {
+      if (this._destroyed) return
       this.currentDeploymentId = deploymentId
       this.activeDeployment = { id: deploymentId }
       this.viewedDeployment = null
@@ -231,15 +234,14 @@ export default {
       })
       this._sseSource = src
     },
-    async cancelDeployment() {
+    cancelDeployment() {
       if (!this.currentDeploymentId) return
-      try {
-        await deploymentsService.cancel(this.currentDeploymentId)
+      deploymentsService.cancel(this.currentDeploymentId).then(() => {
         this.toastStore.info('Déploiement annulé')
         this.loadHistory()
-      } catch (e) {
+      }).catch(e => {
         this.toastStore.error(e.response?.data?.error || 'Erreur')
-      }
+      })
     },
     openModal(type) {
       this.modal = { show: true, type }

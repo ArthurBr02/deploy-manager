@@ -59,17 +59,11 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Sécurité (CORS, JWT, Injection Shell, Validation DTO, SSE Tokens)
 - [x] Dockerisation (Dockerfile back/front, docker-compose, nginx.conf, .env.example)
 
-## Phase 5 : Serveur MCP (v2)
+## Phase 6 : Améliorations UI/UX
 
-### Sprint 10 : Personal Access Tokens (PAT)
-- [x] Migration BDD pour la table `personal_access_tokens`
-- [x] Entité, Repository et Service PAT (génération, hachage, validation)
-- [x] Mise à jour de la sécurité pour accepter l'authentification par PAT (Bearer)
-- [x] API et UI de gestion des tokens dans le profil utilisateur
-
-### Sprint 11 : Intégration Model Context Protocol
-- [x] Configuration du serveur MCP (SSE Transport)
-- [x] Implémentation des endpoints `/mcp/sse` et `/mcp/messages`
-- [x] Enregistrement des Tools (list_hosts, get_host, deploy, get_deployments, cancel)
-- [x] Validation de la sécurité (isolation des données par utilisateur via PAT)
+### Sprint 12 : Uniformisation de l'affichage utilisateur
+- [x] Ajout de `userAvatar` dans `DeploymentResponse` (Backend)
+- [x] Création du composant `UserAvatar` (Initials fallback + Image)
+- [x] Création du composant `UserBadge` (Avatar + Nom complet)
+- [x] Intégration dans `AppLayout`, `ProfileView`, `DeploymentTable`, `DeploymentLogsModal`, `UsersView` et `HostDetailView`
 

@@ -40,9 +40,7 @@
       <!-- User footer -->
       <div class="border-t border-warm-border p-3">
         <RouterLink to="/profile" class="flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-warm-muted transition-colors">
-          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-accent flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-            {{ userInitials }}
-          </div>
+          <UserAvatar :user="authStore.user" size="28px" />
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-gray-900 truncate">{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</div>
             <div class="text-xs text-gray-400">{{ authStore.user?.role === 'ADMIN' ? 'Administrateur' : 'Utilisateur' }}</div>
@@ -66,15 +64,12 @@
 import { mapStores } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { ServerIcon, ClockIcon, UsersIcon, SettingsIcon, LogOutIcon } from '@/components/icons'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 export default {
-  components: { LogOutIcon },
+  components: { LogOutIcon, UserAvatar },
   computed: {
     ...mapStores(useAuthStore),
-    userInitials() {
-      if (!this.authStore.user) return '?'
-      return ((this.authStore.user.firstName?.[0] || '') + (this.authStore.user.lastName?.[0] || '')).toUpperCase()
-    },
     navItems() {
       return [
         { to: '/hosts', label: 'Hôtes', icon: ServerIcon },

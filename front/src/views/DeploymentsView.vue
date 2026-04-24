@@ -136,42 +136,39 @@ export default {
     this.loadHosts()
   },
   methods: {
-    async load() {
+    load() {
       this.loading = true
-      try {
-        const params = { page: this.page, size: 20 }
-        if (this.filters.search) params.search = this.filters.search
-        if (this.filters.hostId) params.hostId = this.filters.hostId
-        if (this.filters.status) params.status = this.filters.status
-        if (this.filters.type) params.type = this.filters.type
-        if (this.filters.period) params.period = this.filters.period
-        const res = await deploymentsService.list(params)
+      const params = { page: this.page, size: 20 }
+      if (this.filters.search) params.search = this.filters.search
+      if (this.filters.hostId) params.hostId = this.filters.hostId
+      if (this.filters.status) params.status = this.filters.status
+      if (this.filters.type) params.type = this.filters.type
+      if (this.filters.period) params.period = this.filters.period
+      deploymentsService.list(params).then(res => {
         this.deployments = res.data.content
         this.total = res.data.totalPages
         this.totalElements = res.data.totalElements ?? 0
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
-    async loadStats() {
-      try {
-        const params = {}
-        if (this.filters.period) params.period = this.filters.period
-        if (this.filters.hostId) params.hostId = this.filters.hostId
-        if (this.filters.type) params.type = this.filters.type
-        const res = await deploymentsService.getStats(params)
+    loadStats() {
+      const params = {}
+      if (this.filters.period) params.period = this.filters.period
+      if (this.filters.hostId) params.hostId = this.filters.hostId
+      if (this.filters.type) params.type = this.filters.type
+      deploymentsService.getStats(params).then(res => {
         this.stats = res.data
-      } catch {
+      }).catch(() => {
         this.stats = null
-      }
+      })
     },
-    async loadHosts() {
-      try {
-        const res = await hostsService.getAll()
+    loadHosts() {
+      hostsService.getAll().then(res => {
         this.hosts = res.data.content ?? res.data
-      } catch {
+      }).catch(() => {
         this.hosts = []
-      }
+      })
     },
     resetFilters() {
       this.filters.search = ''
@@ -184,20 +181,21 @@ export default {
     viewDeployment(dep) {
       this.logsModal.deployment = dep
     },
-    async exportCsv() {
+    exportCsv() {
       const params = {}
       if (this.filters.search) params.search = this.filters.search
       if (this.filters.hostId) params.hostId = this.filters.hostId
       if (this.filters.status) params.status = this.filters.status
       if (this.filters.type) params.type = this.filters.type
       if (this.filters.period) params.period = this.filters.period
-      const res = await deploymentsService.exportCsv(params)
-      const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'deployments.csv'
-      a.click()
-      URL.revokeObjectURL(url)
+      deploymentsService.exportCsv(params).then(res => {
+        const url = URL.createObjectURL(res.data)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'deployments.csv'
+        a.click()
+        URL.revokeObjectURL(url)
+      })
     },
   },
 }

@@ -59,18 +59,17 @@ export default {
     }
   },
   methods: {
-    async save() {
+    save() {
       this.saving = true
       this.error = ''
-      try {
-        await hostsService.update(this.host.id, this.form)
+      hostsService.update(this.host.id, this.form).then(() => {
         this.toastStore.success('Hôte mis à jour')
         this.$emit('saved')
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur'
-      } finally {
+      }).finally(() => {
         this.saving = false
-      }
+      })
     },
   },
 }

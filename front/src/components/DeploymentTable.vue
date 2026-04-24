@@ -21,7 +21,9 @@
           <td class="py-3 px-4 font-medium">{{ d.hostName || '—' }}</td>
           <td class="py-3 px-4"><TypeBadge :type="d.type" /></td>
           <td class="py-3 px-4"><StatusBadge :status="d.status" /></td>
-          <td class="py-3 px-4 text-gray-500">{{ d.userFirstName }} {{ d.userLastName }}</td>
+          <td class="py-3 px-4">
+            <UserBadge :user="{ firstName: d.userFirstName, lastName: d.userLastName, avatar: d.userAvatar }" />
+          </td>
           <td class="py-3 px-4 text-xs font-mono text-gray-400">{{ formatDuration(d.durationSeconds) }}</td>
           <td class="py-3 px-4 text-xs text-gray-400">{{ formatDate(d.createdAt) }}</td>
           <td class="py-3 px-4">
@@ -38,10 +40,11 @@
 <script>
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
+import UserBadge from '@/components/UserBadge.vue'
 import { EyeIcon } from '@/components/icons'
 
 export default {
-  components: { StatusBadge, TypeBadge, EyeIcon },
+  components: { StatusBadge, TypeBadge, UserBadge, EyeIcon },
   props: { deployments: Array, loading: Boolean },
   emits: ['view'],
   methods: {

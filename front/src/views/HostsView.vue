@@ -93,13 +93,12 @@ export default {
     if (this._eventSrc) { this._eventSrc.close(); this._eventSrc = null }
   },
   methods: {
-    async load() {
-      try {
-        const res = await hostsService.getAll()
+    load() {
+      hostsService.getAll().then(res => {
         this.hosts = res.data
-      } finally {
+      }).finally(() => {
         this.loading = false
-      }
+      })
     },
     openDeployModal(host, type) {
       this.modal = { show: true, host, type, defaultTimeout: host.defaultTimeout ?? 10 }

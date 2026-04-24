@@ -110,37 +110,35 @@ export default {
       error: '',
     }
   },
-  async mounted() {
-    try {
-      const res = await adminSettingsService.get()
+  mounted() {
+    adminSettingsService.get().then(res => {
       this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
-    } catch {}
+    }).catch(() => {})
   },
   methods: {
-    async submit() {
+    submit() {
       this.error = ''
       if (!this.form.name || !this.form.ip) {
         this.error = "Le nom et l'adresse IP sont obligatoires."
         return
       }
       this.saving = true
-      try {
-        await hostsService.create({
-          name: this.form.name,
-          ip: this.form.ip,
-          domain: this.form.domain || null,
-          deployCommand: this.form.deployCommand || null,
-          generateCommand: this.form.generateCommand || null,
-          deliverCommand: this.form.deliverCommand || null,
-          timeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
-        })
+      hostsService.create({
+        name: this.form.name,
+        ip: this.form.ip,
+        domain: this.form.domain || null,
+        deployCommand: this.form.deployCommand || null,
+        generateCommand: this.form.generateCommand || null,
+        deliverCommand: this.form.deliverCommand || null,
+        timeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
+      }).then(() => {
         this.toastStore.success('Hôte créé avec succès')
         this.$router.push('/hosts')
-      } catch (e) {
+      }).catch(e => {
         this.error = e.response?.data?.error || 'Erreur lors de la création'
-      } finally {
+      }).finally(() => {
         this.saving = false
-      }
+      })
     },
   },
 }
