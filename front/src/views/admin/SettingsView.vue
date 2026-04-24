@@ -1,15 +1,15 @@
 <template>
   <div class="flex flex-col h-full">
-    <header class="h-14 border-b border-warm-border bg-white flex items-center px-6 flex-shrink-0">
+    <header class="h-14 border-b border-warm-border bg-white flex items-center px-4 lg:px-6 flex-shrink-0">
       <h1 class="text-base font-semibold text-gray-900">Paramètres</h1>
     </header>
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
       <div v-if="pageLoading" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
       <div v-else class="max-w-2xl mx-auto space-y-6">
         <!-- General -->
-        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Général</h2>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Commande de déploiement par défaut</label>
@@ -23,13 +23,13 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Système d'exploitation du serveur</label>
-            <select v-model="settings.server_os" class="w-48 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
+            <select v-model="settings.server_os" class="w-full sm:w-48 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
               <option value="linux">Linux</option>
               <option value="windows">Windows</option>
             </select>
             <p class="text-xs text-gray-400 mt-1">Détermine le shell utilisé pour exécuter les commandes de déploiement.</p>
           </div>
-          <div v-if="settings.server_os === 'linux'" class="grid grid-cols-2 gap-4">
+          <div v-if="settings.server_os === 'linux'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Shell Linux — exécutable</label>
               <input v-model="settings.shell_linux_bin" placeholder="/bin/sh" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -41,7 +41,7 @@
               <p class="text-xs text-gray-400 mt-1">Défaut : <code class="font-mono">-c</code></p>
             </div>
           </div>
-          <div v-else-if="settings.server_os === 'windows'" class="grid grid-cols-2 gap-4">
+          <div v-else-if="settings.server_os === 'windows'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Shell Windows — exécutable</label>
               <input v-model="settings.shell_windows_bin" placeholder="cmd.exe" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -55,13 +55,13 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Timeout par défaut (minutes)</label>
-            <input v-model="settings.default_timeout" type="number" min="0" class="w-40 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            <span class="text-xs text-gray-400 ml-2">0 = désactivé</span>
+            <input v-model="settings.default_timeout" type="number" min="0" class="w-full sm:w-40 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            <span class="text-xs text-gray-400 sm:ml-2">0 = désactivé</span>
           </div>
         </div>
 
         <!-- Notifications -->
-        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Notifications</h2>
           <div class="flex items-center gap-3">
             <input type="checkbox" v-model="settings.notification_enabled" :true-value="'true'" :false-value="'false'" id="notif-enabled"
@@ -77,9 +77,9 @@
         </div>
 
         <!-- SMTP -->
-        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Email (SMTP)</h2>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Serveur SMTP</label>
               <input v-model="settings.smtp_host" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -96,7 +96,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
               <input v-model="settings.smtp_password" type="password" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             </div>
-            <div>
+            <div class="sm:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Expéditeur</label>
               <input v-model="settings.smtp_from" type="email" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             </div>
@@ -104,7 +104,7 @@
         </div>
 
         <!-- Import Ansible -->
-        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Import Ansible</h2>
           <p class="text-sm text-gray-500">Importer un fichier <code class="font-mono text-xs bg-warm-muted px-1 rounded">hosts-all</code> pour mettre à jour les hôtes existants.</p>
           <div
@@ -130,8 +130,8 @@
         </div>
 
         <div v-if="saveError" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ saveError }}</div>
-        <div class="flex justify-end">
-          <button @click="save" :disabled="saving" class="px-6 py-2 bg-accent text-white rounded-md text-sm hover:bg-accent-hover disabled:opacity-50">
+        <div class="flex justify-end pb-10">
+          <button @click="save" :disabled="saving" class="w-full sm:w-auto px-6 py-2 bg-accent text-white rounded-md text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
             {{ saving ? 'Enregistrement...' : 'Enregistrer' }}
           </button>
         </div>

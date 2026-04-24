@@ -1,18 +1,18 @@
 <template>
   <div class="flex flex-col h-full">
-    <header class="h-14 border-b border-warm-border bg-white flex items-center px-6 gap-4 flex-shrink-0">
+    <header class="h-14 border-b border-warm-border bg-white flex items-center px-4 lg:px-6 gap-4 flex-shrink-0">
       <h1 class="text-base font-semibold text-gray-900">Utilisateurs</h1>
       <div class="flex-1" />
       <button @click="showCreate = true" class="flex items-center gap-1.5 bg-accent text-white px-3 py-1.5 rounded-md text-sm hover:bg-accent-hover">
-        <PlusIcon class="w-3.5 h-3.5" /> Nouvel utilisateur
+        <PlusIcon class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Nouvel utilisateur</span>
       </button>
     </header>
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
-      <div v-else class="bg-white border border-warm-border rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
+      <div v-else class="bg-white border border-warm-border rounded-xl overflow-x-auto">
+        <table class="w-full text-sm min-w-[600px]">
           <thead class="bg-warm-muted border-b border-warm-border">
             <tr>
               <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Utilisateur</th>
@@ -50,7 +50,7 @@
   </div>
 
   <!-- Create modal -->
-  <div v-if="showCreate" class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+  <div v-if="showCreate" class="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
       <h2 class="font-semibold text-gray-900">Créer un utilisateur</h2>
       <div class="grid grid-cols-2 gap-3">

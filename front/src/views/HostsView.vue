@@ -1,22 +1,22 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Topbar -->
-    <header class="h-14 border-b border-warm-border bg-white flex items-center px-6 gap-4 flex-shrink-0">
-      <h1 class="text-base font-semibold text-gray-900">Hôtes</h1>
-      <div class="flex-1" />
-      <div class="relative">
+    <header class="h-14 border-b border-warm-border bg-white flex items-center px-4 lg:px-6 gap-2 lg:gap-4 flex-shrink-0">
+      <h1 class="text-base font-semibold text-gray-900 hidden sm:block">Hôtes</h1>
+      <div class="flex-1 sm:hidden"></div>
+      <div class="relative flex-1 sm:flex-none">
         <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input v-model="search" placeholder="Rechercher..." class="pl-8 pr-3 py-1.5 text-sm border border-warm-border rounded-md outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 w-52" />
+        <input v-model="search" placeholder="Rechercher..." class="w-full sm:w-52 pl-8 pr-3 py-1.5 text-sm border border-warm-border rounded-md outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
       </div>
       <RouterLink v-if="authStore.isAdmin" to="/admin/hosts/new">
         <button class="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-          <PlusIcon class="w-3.5 h-3.5" /> Nouvel hôte
+          <PlusIcon class="w-3.5 h-3.5" /> <span class="hidden xs:inline">Nouvel hôte</span>
         </button>
       </RouterLink>
     </header>
 
     <!-- Content -->
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
       <div v-if="loading" class="flex-1 flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>

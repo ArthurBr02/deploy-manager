@@ -1,36 +1,36 @@
 <template>
   <div class="flex flex-col h-full">
-    <header class="h-14 border-b border-warm-border bg-white flex items-center px-6 gap-4 flex-shrink-0">
-      <div class="flex items-center gap-2 text-sm text-gray-500">
+    <header class="h-14 border-b border-warm-border bg-white flex items-center px-4 lg:px-6 gap-4 flex-shrink-0 overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-2 text-sm text-gray-500 whitespace-nowrap">
         <RouterLink to="/hosts" class="hover:text-gray-700">Hôtes</RouterLink>
         <span>/</span>
         <span class="text-gray-900 font-medium">{{ host?.name }}</span>
       </div>
-      <div class="flex-1" />
-      <div v-if="activeDeployment" class="flex items-center gap-2">
-        <span class="text-sm text-status-progress">Déploiement en cours...</span>
-        <button @click="cancelDeployment" class="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-md">Annuler</button>
+      <div class="flex-1 min-w-[1rem]" />
+      <div v-if="activeDeployment" class="flex items-center gap-2 whitespace-nowrap">
+        <span class="text-xs text-status-progress sm:text-sm">En cours...</span>
+        <button @click="cancelDeployment" class="text-xs sm:text-sm text-red-500 hover:text-red-700 border border-red-200 px-2 sm:px-3 py-1 rounded-md">Annuler</button>
       </div>
     </header>
 
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
       <div v-if="!host" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
       <div v-else class="max-w-7xl mx-auto space-y-6">
         <div class="space-y-6">
           <!-- Info card -->
-          <div class="bg-white border border-warm-border rounded-xl p-5 shadow-sm">
+          <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 shadow-sm">
             <div class="flex items-center justify-between mb-4">
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900">{{ host.name }}</h2>
-                <div class="text-sm text-gray-400 font-mono">{{ host.ip }}</div>
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-gray-900 truncate">{{ host.name }}</h2>
+                <div class="text-sm text-gray-400 font-mono truncate">{{ host.ip }}</div>
               </div>
-              <StatusBadge :status="host.lastDeploymentStatus || 'NEVER'" />
+              <StatusBadge :status="host.lastDeploymentStatus || 'NEVER'" class="shrink-0" />
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              <div><span class="text-gray-400">Domaine</span><div class="font-medium">{{ host.domain || '—' }}</div></div>
-              <div><span class="text-gray-400">Timeout</span><div class="font-medium">{{ host.defaultTimeout != null ? host.defaultTimeout + ' min' : 'Défaut' }}</div></div>
+              <div class="min-w-0"><span class="text-gray-400">Domaine</span><div class="font-medium truncate">{{ host.domain || '—' }}</div></div>
+              <div class="min-w-0"><span class="text-gray-400">Timeout</span><div class="font-medium truncate">{{ host.defaultTimeout != null ? host.defaultTimeout + ' min' : 'Défaut' }}</div></div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <button v-if="host.canDeploy" @click="openModal('DEPLOY')" class="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-md text-sm hover:bg-accent-hover">
@@ -48,16 +48,16 @@
               <RouterLink v-if="host.canExecute" :to="`/hosts/${host.id}/terminal`" class="flex items-center gap-1.5 px-3 py-1.5 border border-accent text-accent rounded-md text-sm hover:bg-accent/5">
                 <TerminalIcon class="w-3.5 h-3.5" /> Terminal
               </RouterLink>
-              <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted ml-auto">
+              <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted sm:ml-auto">
                 <EditIcon class="w-3.5 h-3.5" /> Modifier
               </RouterLink>
             </div>
           </div>
 
           <!-- Tabs -->
-          <div class="border-b border-warm-border flex gap-0">
+          <div class="border-b border-warm-border flex gap-0 overflow-x-auto no-scrollbar">
             <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap"
               :class="activeTab === tab.id ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700'">
               {{ tab.label }}
               <span v-if="tab.id === 'logs' && tlogActive" class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
@@ -76,7 +76,7 @@
                 </div>
               </div>
 
-              <div v-if="!viewedDeployment && !currentDeploymentId" class="h-[450px] flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-warm-border rounded-xl bg-white">
+              <div v-if="!viewedDeployment && !currentDeploymentId" class="h-[300px] sm:h-[450px] flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-warm-border rounded-xl bg-white">
                 <TerminalIcon class="w-8 h-8 mb-2 opacity-30" />
                 <p class="text-sm">Aucun déploiement disponible</p>
               </div>
@@ -84,10 +84,12 @@
                 <div class="bg-white border border-warm-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] shadow-sm">
                   <UserBadge v-if="displayDeployment" :user="{ id: displayDeployment.userId, firstName: displayDeployment.userFirstName, lastName: displayDeployment.userLastName, avatar: displayDeployment.userAvatar }" />
                   <span class="text-gray-400">{{ formatDate(displayDeployment?.createdAt) }}</span>
-                  <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
-                  <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
+                  <div class="flex gap-2">
+                    <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
+                    <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
+                  </div>
                 </div>
-                <div class="dm-term h-[400px] overflow-auto text-[11px]" ref="logEl">{{ logContent }}</div>
+                <div class="dm-term h-[300px] sm:h-[400px] overflow-auto text-[11px]" ref="logEl">{{ logContent }}</div>
               </div>
             </div>
 
@@ -105,7 +107,7 @@
                 </div>
               </div>
 
-              <div class="bg-[#1a1a1a] border border-black rounded-xl overflow-hidden shadow-lg flex flex-col h-[450px]">
+              <div class="bg-[#1a1a1a] border border-black rounded-xl overflow-hidden shadow-lg flex flex-col h-[300px] sm:h-[450px]">
                 <div class="flex-1 p-3 overflow-auto font-mono text-[10px] leading-relaxed selection:bg-accent/30" ref="tlogEl">
                   <div v-for="(line, i) in tlogLines" :key="i" class="text-gray-300 border-l border-white/5 pl-2 mb-0.5 whitespace-pre-wrap break-all hover:bg-white/5">{{ line }}</div>
                   
@@ -338,3 +340,13 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

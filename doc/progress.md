@@ -103,3 +103,11 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Backend : Intégration WebSocket et gestion session SSH
 - [x] Frontend : Interface terminal avec xterm.js
 
+## Phase 10 : Design Adaptatif et Mobilité
+
+### Sprint 18 : Menu Mobile et Layout
+- [x] Menu latéral pliable (Sidebar) avec backdrop sur mobile
+- [x] Header mobile avec bouton menu et accès profil
+- [x] Adaptation des vues principales (Hôtes, Déploiements, Détail Hôte)
+- [x] Optimisation des formulaires et tables pour les petits écrans
+
