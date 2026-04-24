@@ -29,9 +29,24 @@ public class AuthService {
     private final PasswordResetTokenRepository resetTokenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final PersonalAccessTokenService patService;
 
     @Value("${app.security.cookie-secure}")
     private boolean cookieSecure;
+
+    public User validateSseToken(String token) {
+        // 1. Try as JWT SSE token or Access Token
+        try {
+            Claims claims = jwtUtil.validateAccessToken(token);
+            UUID userId = UUID.fromString(claims.getSubject());
+            return userRepository.findByIdAndDeletedAtIsNull(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        } catch (Exception ignored) {}
+
+        // 2. Try as Personal Access Token (PAT)
+        return patService.validateToken(token)
+                .orElseThrow(() -> new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
+    }
 
     @Transactional
     public LoginResponse login(LoginRequest req, HttpServletResponse response) {

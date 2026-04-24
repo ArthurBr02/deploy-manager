@@ -64,6 +64,13 @@
           </div>
 
           <div>
+            <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+              <TerminalIcon class="w-3.5 h-3.5 text-gray-400" /> Commande Tlog
+            </label>
+            <textarea v-model="form.tlogCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour utiliser la commande par défaut" />
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Timeout spécifique (minutes)</label>
             <div class="flex items-center gap-2">
               <input v-model.number="form.defaultTimeout" type="number" min="0" class="w-24 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -89,10 +96,10 @@
 import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
-import { RocketIcon, PackageIcon, TruckIcon } from '@/components/icons'
+import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon } from '@/components/icons'
 
 export default {
-  components: { RocketIcon, PackageIcon, TruckIcon },
+  components: { RocketIcon, PackageIcon, TruckIcon, TerminalIcon },
   computed: {
     ...mapStores(useToastStore),
   },
@@ -106,6 +113,7 @@ export default {
         deploymentCommand: '',
         generateCommand: '',
         deliverCommand: '',
+        tlogCommand: '',
         defaultTimeout: null,
       },
       loading: true,
@@ -124,6 +132,7 @@ export default {
           deploymentCommand: res.data.deploymentCommand || '',
           generateCommand: res.data.generateCommand || '',
           deliverCommand: res.data.deliverCommand || '',
+          tlogCommand: res.data.tlogCommand || '',
           defaultTimeout: res.data.defaultTimeout ?? null,
         }
       }
@@ -144,6 +153,7 @@ export default {
         deploymentCommand: this.form.deploymentCommand || null,
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,
+        tlogCommand: this.form.tlogCommand || null,
         domain: this.form.domain || null,
       }).then(() => {
         this.toastStore.success('Hôte mis à jour')

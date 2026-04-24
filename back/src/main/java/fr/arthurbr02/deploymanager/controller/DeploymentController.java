@@ -30,8 +30,7 @@ public class DeploymentController {
 
     private final DeploymentService deploymentService;
     private final fr.arthurbr02.deploymanager.security.JwtUtil jwtUtil;
-    private final fr.arthurbr02.deploymanager.repository.UserRepository userRepository;
-    private final fr.arthurbr02.deploymanager.service.PersonalAccessTokenService patService;
+    private final fr.arthurbr02.deploymanager.service.AuthService authService;
 
     @PostMapping("/sse-token")
     @Operation(summary = "Générer un token à usage unique pour SSE")
@@ -57,29 +56,15 @@ public class DeploymentController {
     @GetMapping(value = "/{id}/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs d'un déploiement (nécessite un token SSE)")
     public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token) {
-        User user = validateSseToken(token);
+        User user = authService.validateSseToken(token);
         return deploymentService.streamLogs(id, user);
     }
 
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des changements de statut de déploiement (nécessite un token SSE)")
     public SseEmitter subscribeEvents(@RequestParam String token) {
-        User user = validateSseToken(token);
+        User user = authService.validateSseToken(token);
         return deploymentService.subscribeEvents(user);
-    }
-
-    private User validateSseToken(String token) {
-        // 1. Try as JWT SSE token or Access Token
-        try {
-            Claims claims = jwtUtil.validateAccessToken(token);
-            UUID userId = UUID.fromString(claims.getSubject());
-            return userRepository.findByIdAndDeletedAtIsNull(userId)
-                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-        } catch (Exception ignored) {}
-
-        // 2. Try as Personal Access Token (PAT)
-        return patService.validateToken(token)
-                .orElseThrow(() -> new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
     }
 
     @GetMapping("/stats")

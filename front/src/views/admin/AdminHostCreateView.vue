@@ -61,6 +61,14 @@
           </div>
 
           <div>
+            <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+              <TerminalIcon class="w-3.5 h-3.5 text-gray-400" /> Commande Tlog
+            </label>
+            <input v-model="form.tlogCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultTlogCommand || 'ssh root@{domain} tlog'" />
+            <p class="text-xs text-gray-400 mt-1">Par défaut : <code class="font-mono text-xs">{{ defaultTlogCommand || 'ssh root@{domain} tlog' }}</code></p>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Timeout spécifique (minutes)</label>
             <div class="flex items-center gap-2">
               <input v-model="form.timeout" type="number" min="0" class="w-24 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="10" />
@@ -87,16 +95,17 @@ import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
 import adminSettingsService from '@/services/adminSettingsService'
-import { RocketIcon, PackageIcon, TruckIcon } from '@/components/icons'
+import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon } from '@/components/icons'
 
 export default {
-  components: { RocketIcon, PackageIcon, TruckIcon },
+  components: { RocketIcon, PackageIcon, TruckIcon, TerminalIcon },
   computed: {
     ...mapStores(useToastStore),
   },
   data() {
     return {
       defaultDeployCommand: '',
+      defaultTlogCommand: '',
       form: {
         name: '',
         ip: '',
@@ -104,6 +113,7 @@ export default {
         deployCommand: '',
         generateCommand: '',
         deliverCommand: '',
+        tlogCommand: '',
         timeout: '',
       },
       saving: false,
@@ -113,6 +123,7 @@ export default {
   mounted() {
     adminSettingsService.get().then(res => {
       this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
+      this.defaultTlogCommand = res.data.settings?.default_tlog_command || ''
     }).catch(() => {})
   },
   methods: {
@@ -127,10 +138,11 @@ export default {
         name: this.form.name,
         ip: this.form.ip,
         domain: this.form.domain || null,
-        deployCommand: this.form.deployCommand || null,
+        deploymentCommand: this.form.deployCommand || null,
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,
-        timeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
+        tlogCommand: this.form.tlogCommand || null,
+        defaultTimeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
       }).then(() => {
         this.toastStore.success('Hôte créé avec succès')
         this.$router.push('/hosts')

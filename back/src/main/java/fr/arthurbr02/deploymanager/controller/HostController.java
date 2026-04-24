@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
 
@@ -23,6 +24,14 @@ import java.util.*;
 public class HostController {
 
     private final HostService hostService;
+    private final fr.arthurbr02.deploymanager.service.AuthService authService;
+
+    @GetMapping(value = "/hosts/{id}/tlog", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Stream SSE des logs applicatifs (tlog) (nécessite un token SSE)")
+    public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token) {
+        User user = authService.validateSseToken(token);
+        return hostService.streamTlog(id, user);
+    }
 
     @GetMapping("/hosts")
     @Operation(summary = "Lister les hôtes accessibles")

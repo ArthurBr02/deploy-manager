@@ -36,6 +36,9 @@ public class Host {
     @Column(name = "deliver_command", columnDefinition = "TEXT")
     private String deliverCommand;
 
+    @Column(name = "tlog_command", columnDefinition = "TEXT")
+    private String tlogCommand;
+
     @Column(name = "default_timeout")
     private Integer defaultTimeout;
 

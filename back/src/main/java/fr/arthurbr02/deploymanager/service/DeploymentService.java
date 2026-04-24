@@ -408,10 +408,7 @@ public class DeploymentService {
     }
 
     private String replaceVariables(String command, Host host) {
-        return command
-                .replace("{host}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getName()))
-                .replace("{ip}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getIp()))
-                .replace("{domain}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getDomain()));
+        return fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
     }
 
     private String readLogFile(String path) {

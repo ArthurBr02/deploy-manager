@@ -11,4 +11,5 @@ export default {
     formData.append('file', file)
     return api.post('/admin/hosts/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
+  getTlogStreamUrl: (id, token) => `${import.meta.env.VITE_API_URL || '/api'}/hosts/${id}/tlog?token=${token}`,
 }

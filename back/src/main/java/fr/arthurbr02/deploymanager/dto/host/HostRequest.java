@@ -29,5 +29,8 @@ public record HostRequest(
     @Size(max = 1000)
     String deliverCommand,
 
+    @Size(max = 1000)
+    String tlogCommand,
+
     Integer defaultTimeout
 ) {}

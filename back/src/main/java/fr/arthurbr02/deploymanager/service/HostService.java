@@ -6,23 +6,28 @@ import fr.arthurbr02.deploymanager.enums.Role;
 import fr.arthurbr02.deploymanager.exception.ForbiddenException;
 import fr.arthurbr02.deploymanager.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HostService {
 
     private final HostRepository hostRepository;
     private final UserHostPermissionRepository permissionRepository;
     private final DeploymentRepository deploymentRepository;
+    private final AppConfigService configService;
 
     public List<HostWithStatusResponse> findAll(User currentUser) {
         List<Host> hosts = currentUser.getRole() == Role.ADMIN
@@ -79,6 +84,7 @@ public class HostService {
                 .deploymentCommand(req.deploymentCommand())
                 .generateCommand(req.generateCommand())
                 .deliverCommand(req.deliverCommand())
+                .tlogCommand(req.tlogCommand())
                 .defaultTimeout(req.defaultTimeout())
                 .build();
         return HostResponse.from(hostRepository.save(host));
@@ -99,8 +105,81 @@ public class HostService {
         host.setDeploymentCommand(req.deploymentCommand());
         host.setGenerateCommand(req.generateCommand());
         host.setDeliverCommand(req.deliverCommand());
+        host.setTlogCommand(req.tlogCommand());
         host.setDefaultTimeout(req.defaultTimeout());
         return HostResponse.from(hostRepository.save(host));
+    }
+
+    public SseEmitter streamTlog(UUID hostId, User user) {
+        Host host = hostRepository.findByIdAndDeletedAtIsNull(hostId)
+                .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        if (user.getRole() != Role.ADMIN) {
+            permissionRepository.findByUserIdAndHostId(user.getId(), hostId)
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+        }
+
+        String command = (host.getTlogCommand() != null && !host.getTlogCommand().isBlank())
+                ? host.getTlogCommand()
+                : configService.get("default_tlog_command", "ssh root@{domain} tlog");
+
+        String resolved = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
+
+        SseEmitter emitter = new SseEmitter(0L);
+
+        CompletableFuture.runAsync(() -> {
+            Process process = null;
+            try {
+                String serverOs = configService.get("server_os", "linux");
+                String shellBin, shellArg;
+                if ("windows".equalsIgnoreCase(serverOs)) {
+                    shellBin = configService.get("shell_windows_bin", "cmd.exe");
+                    shellArg = configService.get("shell_windows_arg", "/c");
+                } else {
+                    shellBin = configService.get("shell_linux_bin", "/bin/sh");
+                    shellArg = configService.get("shell_linux_arg", "-c");
+                }
+
+                ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, resolved);
+                pb.redirectErrorStream(true);
+                process = pb.start();
+                final Process finalProcess = process;
+
+                emitter.onCompletion(() -> {
+                    log.info("[Tlog] Emitter completed, killing process for host {}", hostId);
+                    finalProcess.destroyForcibly();
+                });
+                emitter.onTimeout(() -> {
+                    log.info("[Tlog] Emitter timeout, killing process for host {}", hostId);
+                    finalProcess.destroyForcibly();
+                });
+                emitter.onError(e -> {
+                    log.warn("[Tlog] Emitter error, killing process for host {}: {}", hostId, e.getMessage());
+                    finalProcess.destroyForcibly();
+                });
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        emitter.send(SseEmitter.event().name("log").data(line + "\n"));
+                    }
+                }
+
+                int exitCode = process.waitFor();
+                emitter.send(SseEmitter.event().name("end").data("Exit code: " + exitCode));
+                emitter.complete();
+
+            } catch (Exception e) {
+                log.error("Tlog error for host {}", hostId, e);
+                try {
+                    emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {}
+                if (process != null) process.destroyForcibly();
+            }
+        });
+
+        return emitter;
     }
 
     @Transactional

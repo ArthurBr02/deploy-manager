@@ -67,14 +67,3 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Création du composant `UserBadge` (Avatar + Nom complet)
 - [x] Intégration dans `AppLayout`, `ProfileView`, `DeploymentTable`, `DeploymentLogsModal`, `UsersView` et `HostDetailView`
 
-## Phase 7 : Monitoring et Logs Applicatifs
-
-### Sprint 13 : Logs en temps réel (tlog)
-- [x] Migration BDD (V9__add_tlog_command.sql) et entité Host
-- [x] Backend : Service de streaming SSE pour tlog (HostService)
-- [x] Backend : Endpoint SSE tlog (HostController)
-- [x] Frontend : Formulaire d'édition (tlogCommand) et paramètres globaux
-- [x] Frontend : Layout Split-Screen vertical (HostDetailView)
-- [x] Frontend : Intégration SSE tlog et gestion cycle de vie flux
-- [x] Validation : Vérification fermeture des processus distants
-
