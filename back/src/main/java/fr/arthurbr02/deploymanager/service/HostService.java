@@ -138,6 +138,7 @@ public class HostService {
     @Transactional
     public Map<String, Object> importAnsibleFile(MultipartFile file) {
         int updated = 0;
+        int created = 0;
         int skipped = 0;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             String line;
@@ -150,13 +151,20 @@ public class HostService {
                     current = null;
                     continue;
                 }
-                if (!line.contains(" ") && !line.contains("=")) {
+                String[] tokens = line.split("\\s+");
+                if (!tokens[0].contains("=")) {
+                    // First token is a hostname
                     if (current != null && current.containsKey("hostname")) hosts.add(current);
                     current = new LinkedHashMap<>();
-                    current.put("hostname", line.split("\\s+")[0]);
+                    current.put("hostname", tokens[0]);
+                    // Parse any inline key=value pairs on the same line
+                    for (int i = 1; i < tokens.length; i++) {
+                        String[] kv = tokens[i].split("=", 2);
+                        if (kv.length == 2) current.put(kv[0], kv[1].replaceAll("^\"|\"$", ""));
+                    }
                 } else if (current != null) {
-                    // parse key=value pairs
-                    for (String part : line.split("\\s+")) {
+                    // Continuation line with only key=value pairs
+                    for (String part : tokens) {
                         String[] kv = part.split("=", 2);
                         if (kv.length == 2) current.put(kv[0], kv[1].replaceAll("^\"|\"$", ""));
                     }
@@ -166,20 +174,30 @@ public class HostService {
 
             for (Map<String, String> h : hosts) {
                 String hostname = h.get("hostname");
+                if (!h.containsKey("ansible_host")) {
+                    skipped++;
+                    continue;
+                }
                 Optional<Host> existing = hostRepository.findByNameAndDeletedAtIsNull(hostname);
                 if (existing.isPresent()) {
                     Host host = existing.get();
-                    if (h.containsKey("ansible_host")) host.setIp(h.get("ansible_host"));
+                    host.setIp(h.get("ansible_host"));
                     if (h.containsKey("domain_name")) host.setDomain(h.get("domain_name"));
                     hostRepository.save(host);
                     updated++;
                 } else {
-                    skipped++;
+                    Host host = Host.builder()
+                            .name(hostname)
+                            .ip(h.get("ansible_host"))
+                            .domain(h.getOrDefault("domain_name", null))
+                            .build();
+                    hostRepository.save(host);
+                    created++;
                 }
             }
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors du parsing du fichier: " + e.getMessage());
         }
-        return Map.of("updated", updated, "skipped", skipped);
+        return Map.of("updated", updated, "created", created, "skipped", skipped);
     }
 }

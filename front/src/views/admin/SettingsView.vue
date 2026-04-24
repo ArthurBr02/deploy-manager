@@ -103,7 +103,7 @@
             <input ref="fileInputRef" type="file" @change="handleFile" class="hidden" />
           </div>
           <div v-if="importResult" class="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-sm text-green-700">
-            Import terminé : {{ importResult.updated }} hôte(s) mis à jour, {{ importResult.skipped }} ignoré(s).
+            Import terminé : {{ importResult.created }} hôte(s) créé(s), {{ importResult.updated }} mis à jour, {{ importResult.skipped }} ignoré(s).
           </div>
           <div v-if="importError" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ importError }}</div>
         </div>
