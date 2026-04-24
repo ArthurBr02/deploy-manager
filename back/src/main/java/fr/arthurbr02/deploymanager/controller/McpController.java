@@ -1,14 +1,22 @@
 package fr.arthurbr02.deploymanager.controller;
 
+import fr.arthurbr02.deploymanager.dto.config.AppConfigRequest;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentRequest;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentResponse;
+import fr.arthurbr02.deploymanager.dto.host.HostRequest;
 import fr.arthurbr02.deploymanager.dto.host.HostWithStatusResponse;
+import fr.arthurbr02.deploymanager.dto.host.PermissionRequest;
 import fr.arthurbr02.deploymanager.dto.mcp.JsonRpcRequest;
 import fr.arthurbr02.deploymanager.dto.mcp.JsonRpcResponse;
+import fr.arthurbr02.deploymanager.dto.user.CreateUserRequest;
+import fr.arthurbr02.deploymanager.dto.user.UpdateUserRequest;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.enums.DeploymentType;
+import fr.arthurbr02.deploymanager.enums.Role;
+import fr.arthurbr02.deploymanager.service.AppConfigService;
 import fr.arthurbr02.deploymanager.service.DeploymentService;
 import fr.arthurbr02.deploymanager.service.HostService;
+import fr.arthurbr02.deploymanager.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -28,6 +36,8 @@ public class McpController {
 
     private final HostService hostService;
     private final DeploymentService deploymentService;
+    private final UserService userService;
+    private final AppConfigService configService;
 
     // Map to store SSE emitters by session ID
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
@@ -86,12 +96,7 @@ public class McpController {
             Object result = null;
             switch (request.getMethod()) {
                 case "listTools":
-                    result = Map.of("tools", List.of(
-                            Map.of("name", "list_hosts", "description", "Liste les serveurs accessibles", "inputSchema", Map.of("type", "object", "properties", Map.of())),
-                            Map.of("name", "get_host", "description", "Détails d'un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
-                            Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("ALL", "FRONT", "BACK"))))),
-                            Map.of("name", "get_deployments", "description", "Historique des déploiements", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"))))
-                    ));
+                    result = Map.of("tools", listTools(user));
                     break;
 
                 case "callTool":
@@ -115,6 +120,7 @@ public class McpController {
                     .build();
 
         } catch (Exception e) {
+            log.error("Error processing MCP request", e);
             return JsonRpcResponse.builder()
                     .jsonrpc("2.0")
                     .id(request.getId())
@@ -123,27 +129,127 @@ public class McpController {
         }
     }
 
+    private List<Map<String, Object>> listTools(User user) {
+        List<Map<String, Object>> tools = new ArrayList<>(List.of(
+                Map.of("name", "list_hosts", "description", "Liste les serveurs accessibles", "inputSchema", Map.of("type", "object", "properties", Map.of())),
+                Map.of("name", "get_host", "description", "Détails d'un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
+                Map.of("name", "update_host", "description", "Modifier un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "name", Map.of("type", "string"), "ip", Map.of("type", "string"), "domain", Map.of("type", "string"), "deploymentCommand", Map.of("type", "string"), "generateCommand", Map.of("type", "string"), "deliverCommand", Map.of("type", "string"), "defaultTimeout", Map.of("type", "integer")))),
+                Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("ALL", "FRONT", "BACK"))))),
+                Map.of("name", "get_deployments", "description", "Historique des déploiements", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"))))
+        ));
+
+        if (user.getRole() == Role.ADMIN) {
+            tools.addAll(List.of(
+                    Map.of("name", "create_host", "description", "Créer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("name", Map.of("type", "string"), "ip", Map.of("type", "string"), "domain", Map.of("type", "string"), "deploymentCommand", Map.of("type", "string"), "generateCommand", Map.of("type", "string"), "deliverCommand", Map.of("type", "string"), "defaultTimeout", Map.of("type", "integer")))),
+                    Map.of("name", "delete_host", "description", "Supprimer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
+                    Map.of("name", "list_users", "description", "Lister les utilisateurs (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())),
+                    Map.of("name", "create_user", "description", "Créer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("email", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))),
+                    Map.of("name", "update_user", "description", "Modifier un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))),
+                    Map.of("name", "delete_user", "description", "Supprimer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string")))),
+                    Map.of("name", "set_permissions", "description", "Gérer les permissions (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("userId", Map.of("type", "string"), "hostId", Map.of("type", "string"), "canDeploy", Map.of("type", "boolean"), "canEdit", Map.of("type", "boolean")))),
+                    Map.of("name", "get_settings", "description", "Voir les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())),
+                    Map.of("name", "update_settings", "description", "Modifier les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("settings", Map.of("type", "object", "additionalProperties", Map.of("type", "string")))))
+            ));
+        }
+
+        return tools;
+    }
+
     private Object executeTool(String name, Map<String, Object> args, User user) {
         switch (name) {
             case "list_hosts":
-                return Map.of("content", List.of(Map.of("type", "text", "text", hostService.findAll(user).toString())));
+                return textResponse(hostService.findAll(user));
 
             case "get_host":
-                UUID hostId = UUID.fromString((String) args.get("hostId"));
-                return Map.of("content", List.of(Map.of("type", "text", "text", hostService.findById(hostId, user).toString())));
+                return textResponse(hostService.findById(UUID.fromString((String) args.get("hostId")), user));
+
+            case "create_host":
+                checkAdmin(user);
+                return textResponse(hostService.create(mapToHostRequest(args)));
+
+            case "update_host":
+                UUID uHostId = UUID.fromString((String) args.get("hostId"));
+                return textResponse(hostService.update(uHostId, mapToHostRequest(args), user));
+
+            case "delete_host":
+                checkAdmin(user);
+                hostService.delete(UUID.fromString((String) args.get("hostId")), user);
+                return textResponse("Hôte supprimé");
 
             case "deploy":
                 UUID dHostId = UUID.fromString((String) args.get("hostId"));
                 DeploymentType dType = DeploymentType.valueOf((String) args.get("type"));
                 DeploymentResponse resp = deploymentService.deploy(dHostId, new DeploymentRequest(dType), user);
-                return Map.of("content", List.of(Map.of("type", "text", "text", "Déploiement lancé avec l'ID: " + resp.id())));
+                return textResponse("Déploiement lancé avec l'ID: " + resp.id());
 
             case "get_deployments":
-                // Basic list, could be improved with pagination
-                return Map.of("content", List.of(Map.of("type", "text", "text", "Historique non implémenté en détail via MCP encore")));
+                return textResponse("Utilisez l'API web pour consulter l'historique détaillé.");
+
+            case "list_users":
+                checkAdmin(user);
+                return textResponse(userService.findAll());
+
+            case "create_user":
+                checkAdmin(user);
+                return textResponse(userService.create(new CreateUserRequest(
+                        (String) args.get("email"),
+                        (String) args.get("firstName"),
+                        (String) args.get("lastName"),
+                        Role.valueOf((String) args.get("role"))
+                )));
+
+            case "update_user":
+                checkAdmin(user);
+                return textResponse(userService.update(UUID.fromString((String) args.get("id")), new UpdateUserRequest(
+                        (String) args.get("firstName"),
+                        (String) args.get("lastName"),
+                        Role.valueOf((String) args.get("role"))
+                )));
+
+            case "delete_user":
+                checkAdmin(user);
+                userService.delete(UUID.fromString((String) args.get("id")), user);
+                return textResponse("Utilisateur supprimé");
+
+            case "set_permissions":
+                checkAdmin(user);
+                hostService.setPermission(UUID.fromString((String) args.get("userId")), new PermissionRequest(
+                        UUID.fromString((String) args.get("hostId")),
+                        (boolean) args.get("canDeploy"),
+                        (boolean) args.get("canEdit")
+                ));
+                return textResponse("Permissions mises à jour");
+
+            case "get_settings":
+                checkAdmin(user);
+                return textResponse(configService.findAll());
+
+            case "update_settings":
+                checkAdmin(user);
+                return textResponse(configService.update(new AppConfigRequest((Map<String, String>) args.get("settings"))));
 
             default:
                 throw new RuntimeException("Outil inconnu: " + name);
         }
+    }
+
+    private void checkAdmin(User user) {
+        if (user.getRole() != Role.ADMIN) throw new RuntimeException("Action réservée aux administrateurs");
+    }
+
+    private Object textResponse(Object data) {
+        return Map.of("content", List.of(Map.of("type", "text", "text", data.toString())));
+    }
+
+    private HostRequest mapToHostRequest(Map<String, Object> args) {
+        return new HostRequest(
+                (String) args.get("name"),
+                (String) args.get("ip"),
+                (String) args.get("domain"),
+                (String) args.get("deploymentCommand"),
+                (String) args.get("generateCommand"),
+                (String) args.get("deliverCommand"),
+                (Integer) args.get("defaultTimeout")
+        );
     }
 }
