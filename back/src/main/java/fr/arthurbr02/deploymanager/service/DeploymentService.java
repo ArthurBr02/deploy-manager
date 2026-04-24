@@ -410,14 +410,14 @@ public class DeploymentService {
         return String.format("%d min %02d s", s / 60, s % 60);
     }
 
-    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, String search, String status, String type, String period, int page, int size) {
+    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, UUID userId, String search, String status, String type, String period, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Specification<Deployment> spec = buildSpec(currentUser, hostId, search, status, type, period);
+        Specification<Deployment> spec = buildSpec(currentUser, hostId, userId, search, status, type, period);
         return deploymentRepository.findAll(spec, pageable).map(d -> DeploymentResponse.from(loadWithJoins(d)));
     }
 
     public byte[] exportCsv(User currentUser, UUID hostId, String search, String status, String type, String period) {
-        Specification<Deployment> spec = buildSpec(currentUser, hostId, search, status, type, period);
+        Specification<Deployment> spec = buildSpec(currentUser, hostId, null, search, status, type, period);
         Sort sort = Sort.by("createdAt").descending();
         List<Deployment> deployments = deploymentRepository.findAll(spec, sort);
 
@@ -453,7 +453,7 @@ public class DeploymentService {
         return value;
     }
 
-    private Specification<Deployment> buildSpec(User user, UUID hostId, String search, String status, String type, String period) {
+    private Specification<Deployment> buildSpec(User user, UUID hostId, UUID userId, String search, String status, String type, String period) {
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (user.getRole() != Role.ADMIN) {
@@ -464,6 +464,7 @@ public class DeploymentService {
             LocalDateTime since = parsePeriod(period);
             if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
             if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
+            if (userId != null) predicates.add(cb.equal(root.get("userId"), userId));
             if (status != null && !status.isBlank()) predicates.add(cb.equal(root.get("status"), DeploymentStatus.valueOf(status)));
             if (type != null && !type.isBlank()) predicates.add(cb.equal(root.get("type"), DeploymentType.valueOf(type)));
             if (search != null && !search.isBlank()) {

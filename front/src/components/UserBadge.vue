@@ -1,8 +1,14 @@
 <template>
-  <div class="flex items-center gap-2 min-w-0">
+  <RouterLink v-if="user?.id" :to="`/users/${user.id}`" class="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity">
     <UserAvatar :user="user" :size="size" :text-class="textClass" />
     <span class="truncate" :class="nameClass">
-      {{ user?.firstName }} {{ user?.lastName }}
+      {{ displayName }}
+    </span>
+  </RouterLink>
+  <div v-else class="flex items-center gap-2 min-w-0">
+    <UserAvatar :user="user" :size="size" :text-class="textClass" />
+    <span class="truncate" :class="nameClass">
+      {{ displayName }}
     </span>
   </div>
 </template>
@@ -29,6 +35,14 @@ export default {
     nameClass: {
       type: String,
       default: 'text-sm'
+    }
+  },
+  computed: {
+    displayName() {
+      if (!this.user) return 'Système'
+      const name = `${this.user.firstName || ''} ${this.user.lastName || ''}`.trim()
+      if (name) return name
+      return this.user.email || this.user.id || 'Système'
     }
   }
 }

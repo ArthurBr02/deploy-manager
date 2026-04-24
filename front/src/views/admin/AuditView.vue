@@ -32,7 +32,13 @@
                 </span>
               </td>
               <td class="py-3 px-4 text-gray-500">
-                <span class="font-mono text-xs">{{ log.userId || 'Système' }}</span>
+                <UserBadge :user="{ 
+                  id: log.userId, 
+                  firstName: log.userFirstName, 
+                  lastName: log.userLastName, 
+                  email: log.userEmail,
+                  avatar: log.userAvatar
+                }" />
               </td>
               <td class="py-3 px-4 truncate max-w-xs font-mono text-xs text-gray-400" :title="log.oldValue">{{ log.oldValue || '—' }}</td>
               <td class="py-3 px-4 truncate max-w-xs font-mono text-xs text-gray-600" :title="log.newValue">{{ log.newValue || '—' }}</td>
@@ -57,8 +63,10 @@
 
 <script>
 import adminAuditService from '@/services/adminAuditService'
+import UserBadge from '@/components/UserBadge.vue'
 
 export default {
+  components: { UserBadge },
   data() {
     return {
       logs: [],

@@ -2,38 +2,40 @@
   <div class="bg-white border border-warm-border rounded-xl overflow-hidden">
     <div v-if="loading" class="text-center py-10 text-gray-400 text-sm">Chargement...</div>
     <div v-else-if="!deployments.length" class="text-center py-10 text-gray-400 text-sm">Aucun déploiement</div>
-    <table v-else class="w-full text-sm">
-      <thead class="bg-warm-muted border-b border-warm-border">
-        <tr>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide w-24">ID</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Hôte</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Type</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Statut</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Lancé par</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Durée</th>
-          <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Date</th>
-          <th class="py-3 px-4 w-10" />
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="d in deployments" :key="d.id" class="border-b border-warm-border/50 hover:bg-warm-muted/40">
-          <td class="py-3 px-4 text-xs text-gray-500 font-mono">#{{ shortId(d.id) }}</td>
-          <td class="py-3 px-4 font-medium">{{ d.hostName || '—' }}</td>
-          <td class="py-3 px-4"><TypeBadge :type="d.type" /></td>
-          <td class="py-3 px-4"><StatusBadge :status="d.status" /></td>
-          <td class="py-3 px-4">
-            <UserBadge :user="{ firstName: d.userFirstName, lastName: d.userLastName, avatar: d.userAvatar }" />
-          </td>
-          <td class="py-3 px-4 text-xs font-mono text-gray-400">{{ formatDuration(d.durationSeconds) }}</td>
-          <td class="py-3 px-4 text-xs text-gray-400">{{ formatDate(d.createdAt) }}</td>
-          <td class="py-3 px-4">
-            <button @click="$emit('view', d)" class="p-1 rounded hover:bg-warm-muted text-gray-400 hover:text-gray-600">
-              <EyeIcon class="w-3.5 h-3.5" />
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else class="overflow-x-auto">
+      <table class="w-full text-sm min-w-[520px]">
+        <thead class="bg-warm-muted border-b border-warm-border">
+          <tr>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide w-20">ID</th>
+            <th v-if="!hideHost" class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Hôte</th>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Type</th>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Statut</th>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Lancé par</th>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Durée</th>
+            <th class="text-left py-3 px-4 font-medium text-xs text-gray-500 uppercase tracking-wide">Date</th>
+            <th class="py-3 px-4 w-10" />
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="d in deployments" :key="d.id" class="border-b border-warm-border/50 hover:bg-warm-muted/40">
+            <td class="py-3 px-4 text-xs text-gray-500 font-mono">#{{ shortId(d.id) }}</td>
+            <td v-if="!hideHost" class="py-3 px-4 font-medium">{{ d.hostName || '—' }}</td>
+            <td class="py-3 px-4"><TypeBadge :type="d.type" /></td>
+            <td class="py-3 px-4"><StatusBadge :status="d.status" /></td>
+            <td class="py-3 px-4">
+              <UserBadge :user="{ id: d.userId, firstName: d.userFirstName, lastName: d.userLastName, avatar: d.userAvatar }" />
+            </td>
+            <td class="py-3 px-4 text-xs font-mono text-gray-400">{{ formatDuration(d.durationSeconds) }}</td>
+            <td class="py-3 px-4 text-xs text-gray-400 whitespace-nowrap">{{ formatDate(d.createdAt) }}</td>
+            <td class="py-3 px-4">
+              <button @click="$emit('view', d)" class="p-1 rounded hover:bg-warm-muted text-gray-400 hover:text-gray-600">
+                <EyeIcon class="w-3.5 h-3.5" />
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -45,7 +47,7 @@ import { EyeIcon } from '@/components/icons'
 
 export default {
   components: { StatusBadge, TypeBadge, UserBadge, EyeIcon },
-  props: { deployments: Array, loading: Boolean },
+  props: { deployments: Array, loading: Boolean, hideHost: { type: Boolean, default: false } },
   emits: ['view'],
   methods: {
     shortId(id) {

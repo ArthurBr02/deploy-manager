@@ -47,10 +47,11 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 
 ### Administration
 - CRUD utilisateurs (génération de mot de passe, gestion des rôles, avatar)
+- Page de détail utilisateur complète avec son historique de déploiements et son journal d'audit filtré
 - CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_execute`)
 - Import de fichier Ansible `hosts-all` (parsing et mise à jour conditionnelle)
 - Paramètres globaux (commande tlog par défaut, notifications, shell, OS)
-- **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User)
+- **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email)
 - **Notifications externes** : webhook Discord/Slack déclenché automatiquement sur les déploiements en échec
 
 ### Historique & Monitoring
@@ -247,7 +248,7 @@ deploy-manager/
 | `POST` | `/api/deployments/{id}/cancel` | Annuler un déploiement en cours |
 | `GET` | `/api/deployments/{id}/logs` | Stream SSE des logs d'un déploiement |
 | `GET` | `/api/deployments/events` | Stream SSE des changements de statut |
-| `GET` | `/api/deployments` | Historique paginé (filtres : host, status, type) |
+| `GET` | `/api/deployments` | Historique paginé (filtres : host, user, status, type) |
 | `GET` | `/api/deployments/stats` | Statistiques sur une période |
 | `GET` | `/api/deployments/export` | Export CSV de l'historique |
 
@@ -262,6 +263,7 @@ deploy-manager/
 | `GET` | `/api/admin/settings` | Paramètres globaux *(admin)* |
 | `PUT` | `/api/admin/settings` | Modifier les paramètres *(admin)* |
 | `GET` | `/api/admin/audit` | Logs d'audit paginés *(admin)* |
+| `GET` | `/api/admin/audit/user/{userId}` | Logs d'audit filtrés par utilisateur *(admin)* |
 
 ### Terminal & MCP
 | Méthode | Route | Description |

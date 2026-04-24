@@ -23,5 +23,6 @@ public class AuditLogResponse {
     private String userFirstName;
     private String userLastName;
     private String userEmail;
+    private String userAvatar;
     private LocalDateTime createdAt;
 }

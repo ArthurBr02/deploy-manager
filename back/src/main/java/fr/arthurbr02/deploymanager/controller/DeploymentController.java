@@ -98,12 +98,13 @@ public class DeploymentController {
     public ResponseEntity<Page<DeploymentResponse>> list(
             @AuthenticationPrincipal User user,
             @RequestParam(required = false) UUID hostId,
+            @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String period,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(deploymentService.findAll(user, hostId, search, status, type, period, page, size));
+        return ResponseEntity.ok(deploymentService.findAll(user, hostId, userId, search, status, type, period, page, size));
     }
 }

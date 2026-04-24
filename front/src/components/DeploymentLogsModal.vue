@@ -6,7 +6,7 @@
           <span class="font-semibold text-gray-900 font-mono text-sm">#{{ shortId(deployment.id) }}</span>
           <TypeBadge :type="deployment.type" />
           <StatusBadge :status="currentStatus" />
-          <UserBadge :user="{ firstName: deployment.userFirstName, lastName: deployment.userLastName, avatar: deployment.userAvatar }" />
+          <UserBadge :user="{ id: deployment.userId, firstName: deployment.userFirstName, lastName: deployment.userLastName, avatar: deployment.userAvatar }" />
           <span class="text-sm text-gray-400">{{ formatDate(deployment.createdAt) }}</span>
           <span v-if="deployment.durationSeconds != null" class="text-xs font-mono text-gray-400">{{ formatDuration(deployment.durationSeconds) }}</span>
           <span v-if="isStreaming" class="flex items-center gap-1.5 text-status-progress text-xs animate-pulse">

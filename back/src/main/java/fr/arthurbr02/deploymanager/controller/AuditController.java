@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import fr.arthurbr02.deploymanager.dto.audit.AuditLogResponse;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/admin/audit")
 @RequiredArgsConstructor
@@ -26,9 +31,18 @@ public class AuditController {
 
     @GetMapping
     @Operation(summary = "Lister les logs d'audit (admin)")
-    public ResponseEntity<Page<AuditLog>> list(
+    public ResponseEntity<Page<AuditLogResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(auditService.findAll(page, size));
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "Lister les logs d'audit d'un utilisateur (admin)")
+    public ResponseEntity<Page<AuditLogResponse>> findByUserId(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(auditService.findByUserId(userId, page, size));
     }
 }

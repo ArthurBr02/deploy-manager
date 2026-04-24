@@ -17,8 +17,7 @@
       <div v-if="!host" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
-      <div v-else class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <!-- Left Column: Host Info, History & Deployment Logs -->
+      <div v-else class="max-w-7xl mx-auto space-y-6">
         <div class="space-y-6">
           <!-- Info card -->
           <div class="bg-white border border-warm-border rounded-xl p-5 shadow-sm">
@@ -58,72 +57,85 @@
           <!-- Tabs -->
           <div class="border-b border-warm-border flex gap-0">
             <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5"
               :class="activeTab === tab.id ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700'">
               {{ tab.label }}
+              <span v-if="tab.id === 'logs' && tlogActive" class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
             </button>
           </div>
 
-          <!-- Logs Content -->
-          <div v-if="activeTab === 'logs'">
-            <div v-if="!viewedDeployment && !currentDeploymentId" class="text-center py-10 text-gray-400 border-2 border-dashed border-warm-border rounded-xl">
-              <TerminalIcon class="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>Aucun déploiement disponible</p>
-            </div>
-            <div v-else class="space-y-3">
-              <!-- Deployment metadata banner -->
-              <div v-if="viewedDeployment || currentDeploymentId" class="bg-white border border-warm-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm shadow-sm">
-                <UserBadge v-if="displayDeployment" :user="{ firstName: displayDeployment.userFirstName, lastName: displayDeployment.userLastName, avatar: displayDeployment.userAvatar }" />
-                <span class="text-gray-400">{{ formatDate(displayDeployment?.createdAt) }}</span>
-                <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
-                <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
-                <span v-if="currentDeploymentId" class="ml-auto flex items-center gap-1.5 text-status-progress text-xs animate-pulse">
+          <!-- Logs & Tlog Content (Split View) -->
+          <div v-if="activeTab === 'logs'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Deployment Logs -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Logs Déploiement</h3>
+                <div v-if="currentDeploymentId" class="flex items-center gap-1.5 text-status-progress text-[10px] animate-pulse font-medium uppercase">
                   <span class="w-1.5 h-1.5 rounded-full bg-status-progress inline-block"></span>
                   En cours…
-                </span>
+                </div>
               </div>
-              <div class="dm-term h-80 overflow-auto" ref="logEl">{{ logContent }}</div>
+
+              <div v-if="!viewedDeployment && !currentDeploymentId" class="h-[450px] flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-warm-border rounded-xl bg-white">
+                <TerminalIcon class="w-8 h-8 mb-2 opacity-30" />
+                <p class="text-sm">Aucun déploiement disponible</p>
+              </div>
+              <div v-else class="space-y-3">
+                <div class="bg-white border border-warm-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] shadow-sm">
+                  <UserBadge v-if="displayDeployment" :user="{ id: displayDeployment.userId, firstName: displayDeployment.userFirstName, lastName: displayDeployment.userLastName, avatar: displayDeployment.userAvatar }" />
+                  <span class="text-gray-400">{{ formatDate(displayDeployment?.createdAt) }}</span>
+                  <TypeBadge v-if="displayDeployment?.type" :type="displayDeployment.type" />
+                  <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
+                </div>
+                <div class="dm-term h-[400px] overflow-auto text-[11px]" ref="logEl">{{ logContent }}</div>
+              </div>
+            </div>
+
+            <!-- Tlog (Real-time App Logs) -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Flux Application (Tlog)</h3>
+                  <span v-if="tlogActive" class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button v-if="tlogLines.length" @click="tlogLines = []" class="text-[10px] text-gray-400 hover:text-gray-600 underline mr-2">Effacer</button>
+                  <button v-if="!tlogActive" @click="startTlog" class="text-[10px] px-2 py-0.5 bg-accent text-white rounded hover:bg-accent-hover font-medium">Démarrer</button>
+                  <button v-else @click="stopTlog" class="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded hover:bg-red-600 font-medium">Arrêter</button>
+                </div>
+              </div>
+
+              <div class="bg-[#1a1a1a] border border-black rounded-xl overflow-hidden shadow-lg flex flex-col h-[450px]">
+                <div class="flex-1 p-3 overflow-auto font-mono text-[10px] leading-relaxed selection:bg-accent/30" ref="tlogEl">
+                  <div v-for="(line, i) in tlogLines" :key="i" class="text-gray-300 border-l border-white/5 pl-2 mb-0.5 whitespace-pre-wrap break-all hover:bg-white/5">{{ line }}</div>
+                  
+                  <div v-if="!tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-500 italic text-center p-6">
+                    <RefreshIcon class="w-8 h-8 mb-3 opacity-20 text-accent animate-pulse" />
+                    <p>Démarrez le flux <code class="bg-white/5 px-1 rounded not-italic">tlog</code> pour voir les logs applicatifs.</p>
+                  </div>
+                  
+                  <div v-if="tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-400 italic">
+                    <div class="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin mb-3"></div>
+                    Connexion au flux...
+                  </div>
+                </div>
+                <div class="h-6 bg-black/40 border-t border-white/5 px-3 flex items-center justify-between text-[9px] text-gray-500 uppercase tracking-tight">
+                  <span>{{ tlogActive ? 'Connecté' : 'Déconnecté' }}</span>
+                  <span>{{ tlogLines.length }} lignes</span>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- History -->
           <div v-if="activeTab === 'history'">
-            <DeploymentTable :deployments="deploymentHistory" :loading="histLoading" @view="viewDeployment" />
+            <DeploymentTable :deployments="deploymentHistory" :loading="histLoading" :hide-host="true" @view="viewDeployment" />
           </div>
 
           <!-- Details (edit) -->
           <div v-if="activeTab === 'details' && host.canEdit">
             <HostEditForm :host="host" @saved="loadHost" />
           </div>
-        </div>
-
-        <!-- Right Column: Application Logs (tlog) -->
-        <div class="bg-white border border-warm-border rounded-xl flex flex-col overflow-hidden sticky top-6 h-[calc(100vh-140px)] shadow-sm">
-          <header class="h-12 border-b border-warm-border bg-warm-muted/30 px-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <TerminalIcon class="w-4 h-4 text-gray-400" />
-              <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">Logs Application (tlog)</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button v-if="!tlogActive" @click="startTlog" class="text-xs px-2.5 py-1 bg-accent text-white rounded-md hover:bg-accent-hover font-medium transition-colors">Démarrer</button>
-              <button v-else @click="stopTlog" class="text-xs px-2.5 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium transition-colors">Arrêter</button>
-            </div>
-          </header>
-          <div class="flex-1 bg-[#1a1a1a] p-3 overflow-auto font-mono text-[11px] leading-relaxed selection:bg-accent/30" ref="tlogEl">
-            <div v-for="(line, i) in tlogLines" :key="i" class="text-gray-300 border-l border-white/5 pl-2 mb-0.5 whitespace-pre-wrap break-all">{{ line }}</div>
-            <div v-if="!tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-500 italic text-center p-6">
-              <RefreshIcon class="w-8 h-8 mb-3 opacity-20 text-accent animate-pulse" />
-              <p>Connectez-vous pour visualiser le flux <code class="bg-white/5 px-1 rounded not-italic">tlog</code> de l'hôte.</p>
-            </div>
-            <div v-if="tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-400 italic">
-              <div class="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin mb-3"></div>
-              Connexion en cours...
-            </div>
-          </div>
-          <footer class="h-8 border-t border-warm-border bg-warm-muted/10 px-4 flex items-center justify-between text-[10px] text-gray-400">
-            <span>{{ tlogActive ? 'Flux actif' : 'Flux déconnecté' }}</span>
-            <button v-if="tlogLines.length" @click="tlogLines = []" class="hover:text-gray-600 underline">Effacer la console</button>
-          </footer>
         </div>
       </div>
     </div>

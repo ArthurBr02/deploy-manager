@@ -56,6 +56,12 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/users/{id}")
+    @Operation(summary = "Détail d'un utilisateur (public)")
+    public ResponseEntity<UserResponse> getPublic(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
     @GetMapping("/profile")
     @Operation(summary = "Mon profil")
     public ResponseEntity<UserResponse> profile(@AuthenticationPrincipal User user) {

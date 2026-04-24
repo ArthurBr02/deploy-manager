@@ -36,17 +36,10 @@ public class PersonalAccessTokenController {
     @PostMapping
     @Operation(summary = "Créer un nouveau token")
     public ResponseEntity<TokenResponse> create(@AuthenticationPrincipal User user, @RequestBody CreateTokenRequest req) {
-        String tokenValue = tokenService.createToken(user, req.getName(), req.getExpiresAt());
-        // We find the token again to return the full DTO
-        return ResponseEntity.ok(tokenService.getUserTokens(user.getId()).stream()
-                .filter(t -> t.getToken().equals(tokenValue))
-                .findFirst()
-                .map(t -> {
-                    TokenResponse resp = TokenResponse.from(t);
-                    resp.setToken(tokenValue); // We return the plain token only now
-                    return resp;
-                })
-                .orElseThrow());
+        var result = tokenService.createToken(user, req.getName(), req.getExpiresAt());
+        TokenResponse resp = TokenResponse.from(result.getValue());
+        resp.setToken(result.getKey());
+        return ResponseEntity.ok(resp);
     }
 
     @DeleteMapping("/{id}")

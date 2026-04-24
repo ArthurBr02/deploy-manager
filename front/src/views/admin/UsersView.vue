@@ -34,7 +34,7 @@
               <td class="py-3 px-4 text-xs text-gray-400">{{ formatDate(u.createdAt) }}</td>
               <td class="py-3 px-4">
                 <div class="flex gap-2 justify-end">
-                  <RouterLink :to="`/admin/users/${u.id}`" class="text-gray-400 hover:text-accent">
+                  <RouterLink :to="`/users/${u.id}`" class="text-gray-400 hover:text-accent">
                     <EditIcon class="w-4 h-4" />
                   </RouterLink>
                   <button @click="deleteUser(u)" class="text-gray-400 hover:text-red-500">

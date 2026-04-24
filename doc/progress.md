@@ -94,6 +94,8 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 ### Sprint 16 : Audit et Notifications
 - [x] Audit Log Avancé (Historique des modifications de configuration)
 - [x] Harmonisation du style de la page Audit avec les autres tables admin
+- [x] Enrichissement des logs d'audit avec les informations utilisateur (Backend & UI)
+- [x] Refonte de la page de détail utilisateur (Historique des déploiements et logs d'audit filtrés)
 - [x] Système de notifications externes (Webhooks Discord/Slack)
 
 ### Sprint 17 : Terminal SSH Web
