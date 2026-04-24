@@ -9,8 +9,9 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 | Backend | Java 21 · Spring Boot 3.3 · Maven |
 | Frontend | Vue 3 · Vite · Tailwind CSS · Pinia |
 | Base de données | PostgreSQL 16 · Flyway |
-| Auth | JWT (access + refresh) · Argon2 |
+| Auth | JWT (access + refresh) · Argon2 · Personal Access Tokens (PAT) |
 | Temps réel | SSE (Server-Sent Events) |
+| Intégration AI | Serveur MCP (Model Context Protocol) via SSE |
 
 ---
 
@@ -29,6 +30,7 @@ docker-compose up --build
 | Application | http://localhost:3000 |
 | API | http://localhost:8080/api |
 | Swagger UI | http://localhost:8080/api/swagger-ui.html |
+| MCP SSE | http://localhost:8080/api/mcp/sse |
 
 Le port du frontend est configurable via `FRONTEND_PORT` dans `.env` (défaut : `3000`).
 
@@ -149,6 +151,8 @@ deploy-manager/
 | `POST` | `/api/auth/login` | Connexion |
 | `POST` | `/api/auth/refresh` | Rafraîchir le token |
 | `POST` | `/api/auth/logout` | Déconnexion |
+| `GET` | `/api/profile/tokens` | Lister ses Personal Access Tokens |
+| `POST` | `/api/profile/tokens` | Créer un nouveau PAT |
 | `GET` | `/api/hosts` | Lister les hôtes accessibles |
 | `POST` | `/api/admin/hosts` | Créer un hôte *(admin)* |
 | `POST` | `/api/deployments/hosts/{id}/deploy` | Lancer un déploiement |
@@ -158,8 +162,44 @@ deploy-manager/
 | `GET` | `/api/admin/users` | Lister les utilisateurs *(admin)* |
 | `PUT` | `/api/admin/settings` | Paramètres globaux *(admin)* |
 | `POST` | `/api/admin/hosts/import` | Import Ansible hosts-all *(admin)* |
+| `GET` | `/api/mcp/sse` | Point d'entrée pour les clients MCP |
 
 Documentation complète : **http://localhost:8080/api/swagger-ui.html**
+
+---
+
+## Intégration MCP (Model Context Protocol)
+
+Deploy Manager embarque un serveur MCP permettant à des LLMs (comme Claude Desktop) de piloter vos déploiements.
+
+### Configuration
+
+1. Connectez-vous à l'interface web et allez dans votre **Profil**.
+2. Créez un **Personal Access Token (PAT)** et copiez-le.
+3. Ajoutez le serveur à votre configuration MCP (ex: `claude_desktop_config.json`) :
+
+```json
+{
+  "mcpServers": {
+    "deploy-manager": {
+      "command": "curl",
+      "args": [
+        "-X", "GET",
+        "-H", "Authorization: Bearer VOTRE_TOKEN",
+        "http://localhost:8080/api/mcp/sse"
+      ]
+    }
+  }
+}
+```
+*Note : Le transport SSE nécessite un client compatible ou un bridge stdio-to-sse.*
+
+### Outils disponibles via MCP
+
+- `list_hosts` : Liste les serveurs auxquels vous avez accès.
+- `get_host` : Affiche les détails d'un serveur spécifique.
+- `deploy` : Lance un déploiement (FRONT, BACK ou ALL).
+- `get_deployments` : Liste l'historique des déploiements.
 
 ---
 

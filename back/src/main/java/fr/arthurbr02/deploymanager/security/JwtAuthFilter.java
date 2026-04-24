@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.security;
 
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.UserRepository;
+import fr.arthurbr02.deploymanager.service.PersonalAccessTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -19,6 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -27,6 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final PersonalAccessTokenService patService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -46,19 +49,31 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             token = tokenParam;
         }
+
+        User user = null;
+
+        // Try JWT first
         try {
             Claims claims = jwtUtil.validateAccessToken(token);
             UUID userId = UUID.fromString(claims.getSubject());
-            User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
-            if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                var auth = new UsernamePasswordAuthenticationToken(
-                        user, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                );
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
+        } catch (JwtException | IllegalArgumentException ignored) {
+            // If JWT fails, try PAT
+            Optional<User> patUser = patService.validateToken(token);
+            if (patUser.isPresent()) {
+                user = patUser.get();
             }
-        } catch (JwtException ignored) {}
+        }
+
+        if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            var auth = new UsernamePasswordAuthenticationToken(
+                    user, null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+            );
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+
         filterChain.doFilter(request, response);
     }
 }
