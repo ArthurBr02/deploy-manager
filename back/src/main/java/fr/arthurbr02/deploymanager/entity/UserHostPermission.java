@@ -31,6 +31,9 @@ public class UserHostPermission {
     @Column(name = "can_edit", nullable = false)
     private boolean canEdit;
 
+    @Column(name = "can_execute", nullable = false)
+    private boolean canExecute;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

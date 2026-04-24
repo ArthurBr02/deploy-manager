@@ -63,7 +63,7 @@
 <script>
 import { mapStores } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
-import { ServerIcon, ClockIcon, UsersIcon, SettingsIcon, LogOutIcon } from '@/components/icons'
+import { ServerIcon, ClockIcon, UsersIcon, SettingsIcon, LogOutIcon, TerminalIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 export default {
@@ -81,6 +81,7 @@ export default {
         { to: '/admin/hosts', label: 'Hôtes', icon: ServerIcon },
         { to: '/admin/users', label: 'Utilisateurs', icon: UsersIcon },
         { to: '/admin/settings', label: 'Paramètres', icon: SettingsIcon },
+        { to: '/admin/audit', label: 'Audit Logs', icon: TerminalIcon },
       ]
     },
   },

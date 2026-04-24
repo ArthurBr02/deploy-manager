@@ -81,22 +81,22 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 ## Phase 8 : Sécurité et Robustesse (2026)
 
 ### Sprint 14 : Correctifs de Sécurité et Cycle de vie
-- [ ] Correction Injection Shell (Echappement systématique des variables)
-- [ ] Hachage des Personal Access Tokens (Argon2)
-- [ ] Nettoyage automatique des déploiements orphelins au démarrage
+- [x] Correction Injection Shell (Echappement systématique des variables)
+- [x] Hachage des Personal Access Tokens (Argon2)
+- [x] Nettoyage automatique des déploiements orphelins au démarrage
 
 ### Sprint 15 : Améliorations Déploiement
-- [ ] Commande de Rollback (BDD, Backend et UI)
-- [ ] Healthcheck post-déploiement automatique (Configuration et logique)
+- [x] Commande de Rollback (BDD, Backend et UI)
+- [x] Healthcheck post-déploiement automatique (Configuration et logique)
 
 ## Phase 9 : Administration et Monitoring
 
 ### Sprint 16 : Audit et Notifications
-- [ ] Audit Log Avancé (Historique des modifications de configuration)
-- [ ] Système de notifications externes (Webhooks Discord/Slack)
+- [x] Audit Log Avancé (Historique des modifications de configuration)
+- [x] Système de notifications externes (Webhooks Discord/Slack)
 
 ### Sprint 17 : Terminal SSH Web
-- [ ] Permission `can_execute` sur les hôtes
-- [ ] Backend : Intégration WebSocket et gestion session SSH
-- [ ] Frontend : Interface terminal avec xterm.js
+- [x] Permission `can_execute` sur les hôtes
+- [x] Backend : Intégration WebSocket et gestion session SSH
+- [x] Frontend : Interface terminal avec xterm.js
 

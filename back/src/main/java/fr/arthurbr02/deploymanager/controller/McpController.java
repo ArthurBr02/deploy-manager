@@ -130,26 +130,58 @@ public class McpController {
     }
 
     private List<Map<String, Object>> listTools(User user) {
-        List<Map<String, Object>> tools = new ArrayList<>(List.of(
-                Map.of("name", "list_hosts", "description", "Liste les serveurs accessibles", "inputSchema", Map.of("type", "object", "properties", Map.of())),
-                Map.of("name", "get_host", "description", "Détails d'un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
-                Map.of("name", "update_host", "description", "Modifier un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "name", Map.of("type", "string"), "ip", Map.of("type", "string"), "domain", Map.of("type", "string"), "deploymentCommand", Map.of("type", "string"), "generateCommand", Map.of("type", "string"), "deliverCommand", Map.of("type", "string"), "tlogCommand", Map.of("type", "string"), "defaultTimeout", Map.of("type", "integer")))),
-                Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("ALL", "FRONT", "BACK")), "timeout", Map.of("type", "integer", "description", "Timeout en minutes (optionnel)")))),
-                Map.of("name", "get_deployments", "description", "Historique des déploiements", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"))))
-        ));
+        List<Map<String, Object>> tools = new ArrayList<>();
+        
+        // list_hosts
+        tools.add(Map.of("name", "list_hosts", "description", "Liste les serveurs accessibles", "inputSchema", Map.of("type", "object", "properties", Map.of())));
+        
+        // get_host
+        tools.add(Map.of("name", "get_host", "description", "Détails d'un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))));
+        
+        // update_host
+        Map<String, Object> updateHostProps = new LinkedHashMap<>();
+        updateHostProps.put("hostId", Map.of("type", "string"));
+        updateHostProps.put("name", Map.of("type", "string"));
+        updateHostProps.put("ip", Map.of("type", "string"));
+        updateHostProps.put("domain", Map.of("type", "string"));
+        updateHostProps.put("deploymentCommand", Map.of("type", "string"));
+        updateHostProps.put("generateCommand", Map.of("type", "string"));
+        updateHostProps.put("deliverCommand", Map.of("type", "string"));
+        updateHostProps.put("tlogCommand", Map.of("type", "string"));
+        updateHostProps.put("rollbackCommand", Map.of("type", "string"));
+        updateHostProps.put("healthcheckUrl", Map.of("type", "string"));
+        updateHostProps.put("defaultTimeout", Map.of("type", "integer"));
+        tools.add(Map.of("name", "update_host", "description", "Modifier un serveur", "inputSchema", Map.of("type", "object", "properties", updateHostProps)));
+
+        // deploy
+        tools.add(Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("DEPLOY", "GENERATE", "DELIVER", "ROLLBACK")), "timeout", Map.of("type", "integer", "description", "Timeout en minutes (optionnel)")))));
+        
+        // get_deployments
+        tools.add(Map.of("name", "get_deployments", "description", "Historique des déploiements", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))));
 
         if (user.getRole() == Role.ADMIN) {
-            tools.addAll(List.of(
-                    Map.of("name", "create_host", "description", "Créer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("name", Map.of("type", "string"), "ip", Map.of("type", "string"), "domain", Map.of("type", "string"), "deploymentCommand", Map.of("type", "string"), "generateCommand", Map.of("type", "string"), "deliverCommand", Map.of("type", "string"), "tlogCommand", Map.of("type", "string"), "defaultTimeout", Map.of("type", "integer")))),
-                    Map.of("name", "delete_host", "description", "Supprimer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
-                    Map.of("name", "list_users", "description", "Lister les utilisateurs (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())),
-                    Map.of("name", "create_user", "description", "Créer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("email", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))),
-                    Map.of("name", "update_user", "description", "Modifier un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))),
-                    Map.of("name", "delete_user", "description", "Supprimer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string")))),
-                    Map.of("name", "set_permissions", "description", "Gérer les permissions (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("userId", Map.of("type", "string"), "hostId", Map.of("type", "string"), "canDeploy", Map.of("type", "boolean"), "canEdit", Map.of("type", "boolean")))),
-                    Map.of("name", "get_settings", "description", "Voir les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())),
-                    Map.of("name", "update_settings", "description", "Modifier les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("settings", Map.of("type", "object", "additionalProperties", Map.of("type", "string")))))
-            ));
+            // create_host
+            Map<String, Object> createHostProps = new LinkedHashMap<>(updateHostProps);
+            createHostProps.remove("hostId");
+            tools.add(Map.of("name", "create_host", "description", "Créer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", createHostProps)));
+            
+            tools.add(Map.of("name", "delete_host", "description", "Supprimer un serveur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))));
+            tools.add(Map.of("name", "list_users", "description", "Lister les utilisateurs (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())));
+            tools.add(Map.of("name", "create_user", "description", "Créer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("email", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))));
+            tools.add(Map.of("name", "update_user", "description", "Modifier un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string"), "firstName", Map.of("type", "string"), "lastName", Map.of("type", "string"), "role", Map.of("type", "string", "enum", List.of("USER", "ADMIN"))))));
+            tools.add(Map.of("name", "delete_user", "description", "Supprimer un utilisateur (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string")))));
+            
+            // set_permissions
+            Map<String, Object> permProps = new LinkedHashMap<>();
+            permProps.put("userId", Map.of("type", "string"));
+            permProps.put("hostId", Map.of("type", "string"));
+            permProps.put("canDeploy", Map.of("type", "boolean"));
+            permProps.put("canEdit", Map.of("type", "boolean"));
+            permProps.put("canExecute", Map.of("type", "boolean"));
+            tools.add(Map.of("name", "set_permissions", "description", "Gérer les permissions (Admin)", "inputSchema", Map.of("type", "object", "properties", permProps)));
+            
+            tools.add(Map.of("name", "get_settings", "description", "Voir les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())));
+            tools.add(Map.of("name", "update_settings", "description", "Modifier les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of("settings", Map.of("type", "object", "additionalProperties", Map.of("type", "string"))))));
         }
 
         return tools;
@@ -222,7 +254,8 @@ public class McpController {
                 hostService.setPermission(UUID.fromString((String) args.get("userId")), new PermissionRequest(
                         UUID.fromString((String) args.get("hostId")),
                         (boolean) args.get("canDeploy"),
-                        (boolean) args.get("canEdit")
+                        (boolean) args.get("canEdit"),
+                        args.containsKey("canExecute") ? (boolean) args.get("canExecute") : false
                 ));
                 return textResponse("Permissions mises à jour");
 
@@ -257,6 +290,8 @@ public class McpController {
                 (String) args.get("generateCommand"),
                 (String) args.get("deliverCommand"),
                 (String) args.get("tlogCommand"),
+                (String) args.get("rollbackCommand"),
+                (String) args.get("healthcheckUrl"),
                 (Integer) args.get("defaultTimeout")
         );
     }

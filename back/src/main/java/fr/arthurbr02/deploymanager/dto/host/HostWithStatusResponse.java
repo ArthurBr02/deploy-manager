@@ -5,11 +5,13 @@ import java.util.UUID;
 
 public record HostWithStatusResponse(UUID id, String name, String ip, String domain,
                                       String deploymentCommand, String generateCommand, String deliverCommand, String tlogCommand,
+                                      String rollbackCommand, String healthcheckUrl,
                                       Integer defaultTimeout, String lastDeploymentStatus, LocalDateTime lastDeploymentAt,
-                                      boolean canDeploy, boolean canEdit) {
-    public static HostWithStatusResponse from(Host h, String lastStatus, LocalDateTime lastAt, boolean canDeploy, boolean canEdit) {
+                                      boolean canDeploy, boolean canEdit, boolean canExecute) {
+    public static HostWithStatusResponse from(Host h, String lastStatus, LocalDateTime lastAt, boolean canDeploy, boolean canEdit, boolean canExecute) {
         return new HostWithStatusResponse(h.getId(), h.getName(), h.getIp(), h.getDomain(),
                 h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(), h.getTlogCommand(),
-                h.getDefaultTimeout(), lastStatus, lastAt, canDeploy, canEdit);
+                h.getRollbackCommand(), h.getHealthcheckUrl(),
+                h.getDefaultTimeout(), lastStatus, lastAt, canDeploy, canEdit, canExecute);
     }
 }

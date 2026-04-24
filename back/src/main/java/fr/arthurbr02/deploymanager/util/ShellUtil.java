@@ -28,8 +28,8 @@ public class ShellUtil {
     public static String replaceVariables(String command, String name, String ip, String domain) {
         if (command == null) return null;
         return command
-                .replace("{host}", sanitize(name))
-                .replace("{ip}", sanitize(ip))
-                .replace("{domain}", sanitize(domain));
+                .replace("{host}", "'" + escapeShell(name) + "'")
+                .replace("{ip}", "'" + escapeShell(ip) + "'")
+                .replace("{domain}", "'" + escapeShell(domain) + "'");
     }
 }

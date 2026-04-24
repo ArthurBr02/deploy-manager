@@ -28,6 +28,7 @@ public class HostService {
     private final UserHostPermissionRepository permissionRepository;
     private final DeploymentRepository deploymentRepository;
     private final AppConfigService configService;
+    private final AuditService auditService;
 
     public List<HostWithStatusResponse> findAll(User currentUser) {
         List<Host> hosts = currentUser.getRole() == Role.ADMIN
@@ -51,7 +52,8 @@ public class HostService {
             }
             boolean canDeploy = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanDeploy());
             boolean canEdit = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanEdit());
-            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit);
+            boolean canExecute = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanExecute());
+            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute);
         }).collect(Collectors.toList());
     }
 
@@ -71,8 +73,9 @@ public class HostService {
 
         boolean canDeploy = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDeploy());
         boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
+        boolean canExecute = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanExecute());
 
-        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit);
+        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute);
     }
 
     @Transactional
@@ -85,9 +88,13 @@ public class HostService {
                 .generateCommand(req.generateCommand())
                 .deliverCommand(req.deliverCommand())
                 .tlogCommand(req.tlogCommand())
+                .rollbackCommand(req.rollbackCommand())
+                .healthcheckUrl(req.healthcheckUrl())
                 .defaultTimeout(req.defaultTimeout())
                 .build();
-        return HostResponse.from(hostRepository.save(host));
+        host = hostRepository.save(host);
+        auditService.log("Host", host.getId(), "CREATE", null, host.getName());
+        return HostResponse.from(host);
     }
 
     @Transactional
@@ -99,6 +106,7 @@ public class HostService {
                     .orElseThrow(() -> new ForbiddenException("Accès refusé"));
             if (!perm.isCanEdit()) throw new ForbiddenException("Permission insuffisante");
         }
+        String oldName = host.getName();
         host.setName(req.name());
         host.setIp(req.ip());
         host.setDomain(req.domain());
@@ -106,8 +114,12 @@ public class HostService {
         host.setGenerateCommand(req.generateCommand());
         host.setDeliverCommand(req.deliverCommand());
         host.setTlogCommand(req.tlogCommand());
+        host.setRollbackCommand(req.rollbackCommand());
+        host.setHealthcheckUrl(req.healthcheckUrl());
         host.setDefaultTimeout(req.defaultTimeout());
-        return HostResponse.from(hostRepository.save(host));
+        host = hostRepository.save(host);
+        auditService.log("Host", host.getId(), "UPDATE", oldName, host.getName());
+        return HostResponse.from(host);
     }
 
     public SseEmitter streamTlog(UUID hostId, User user) {
@@ -189,6 +201,7 @@ public class HostService {
         host.setDeletedAt(LocalDateTime.now());
         host.setDeletedBy(currentUser.getId());
         hostRepository.save(host);
+        auditService.log("Host", id, "DELETE", host.getName(), null);
     }
 
     @Transactional
@@ -197,7 +210,8 @@ public class HostService {
                 .orElse(UserHostPermission.builder().userId(userId).hostId(req.hostId()).build());
         perm.setCanDeploy(req.canDeploy());
         perm.setCanEdit(req.canEdit());
-        if (!req.canDeploy() && !req.canEdit()) {
+        perm.setCanExecute(req.canExecute());
+        if (!req.canDeploy() && !req.canEdit() && !req.canExecute()) {
             permissionRepository.deleteByUserIdAndHostId(userId, req.hostId());
         } else {
             permissionRepository.save(perm);
@@ -211,6 +225,7 @@ public class HostService {
             m.put("hostName", p.getHost() != null ? p.getHost().getName() : null);
             m.put("canDeploy", p.isCanDeploy());
             m.put("canEdit", p.isCanEdit());
+            m.put("canExecute", p.isCanExecute());
             return m;
         }).collect(Collectors.toList());
     }

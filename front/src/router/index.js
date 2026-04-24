@@ -15,6 +15,7 @@ const router = createRouter({
         { path: 'hosts', name: 'hosts', component: () => import('@/views/HostsView.vue') },
         { path: 'hosts/:id', name: 'host-detail', component: () => import('@/views/HostDetailView.vue') },
         { path: 'hosts/:id/edit', name: 'host-edit', component: () => import('@/views/HostEditView.vue') },
+        { path: 'hosts/:id/terminal', name: 'host-terminal', component: () => import('@/views/HostTerminalView.vue') },
         { path: 'deployments', name: 'deployments', component: () => import('@/views/DeploymentsView.vue') },
         { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
         { path: 'admin/users', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { admin: true } },
@@ -22,6 +23,7 @@ const router = createRouter({
         { path: 'admin/hosts', name: 'admin-hosts', component: () => import('@/views/admin/AdminHostsView.vue'), meta: { admin: true } },
         { path: 'admin/hosts/new', name: 'admin-host-create', component: () => import('@/views/admin/AdminHostCreateView.vue'), meta: { admin: true } },
         { path: 'admin/settings', name: 'admin-settings', component: () => import('@/views/admin/SettingsView.vue'), meta: { admin: true } },
+        { path: 'admin/audit', name: 'admin-audit', component: () => import('@/views/admin/AuditView.vue'), meta: { admin: true } },
       ]
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },

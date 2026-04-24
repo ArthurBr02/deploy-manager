@@ -4,6 +4,7 @@ import fr.arthurbr02.deploymanager.entity.PersonalAccessToken;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.PersonalAccessTokenRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PersonalAccessTokenService {
     private final PersonalAccessTokenRepository repository;
+    private final PasswordEncoder passwordEncoder;
     private static final SecureRandom secureRandom = new SecureRandom();
     private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder().withoutPadding();
 
@@ -30,7 +32,7 @@ public class PersonalAccessTokenService {
         PersonalAccessToken pat = PersonalAccessToken.builder()
                 .user(user)
                 .name(name)
-                .token(token) // In a production environment, we should store a hash of the token
+                .token(passwordEncoder.encode(token))
                 .expiresAt(expiresAt)
                 .build();
 
@@ -53,8 +55,14 @@ public class PersonalAccessTokenService {
 
     @Transactional
     public Optional<User> validateToken(String tokenValue) {
-        return repository.findByToken(tokenValue)
+        // Since we store hashes, we must find by user or iterate if we don't have a prefix.
+        // But the repository currently finds by exact token.
+        // Improvement: Store a prefix or use a specific format to avoid full table scan.
+        // For now, we fetch all active tokens and check.
+        return repository.findAll().stream()
                 .filter(token -> token.getExpiresAt() == null || token.getExpiresAt().isAfter(LocalDateTime.now()))
+                .filter(token -> passwordEncoder.matches(tokenValue, token.getToken()))
+                .findFirst()
                 .map(token -> {
                     token.setLastUsedAt(LocalDateTime.now());
                     repository.save(token);

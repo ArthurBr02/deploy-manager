@@ -5,7 +5,7 @@
 </template>
 
 <script>
-const TYPE_MAP = { DEPLOY: 'Déployer', GENERATE: 'Générer', DELIVER: 'Livrer' }
+const TYPE_MAP = { DEPLOY: 'Déployer', GENERATE: 'Générer', DELIVER: 'Livrer', ROLLBACK: 'Rollback' }
 
 export default {
   props: { type: String },

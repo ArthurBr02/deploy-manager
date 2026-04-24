@@ -35,6 +35,14 @@
       <label class="block text-sm font-medium text-gray-700 mb-1">Commande Tlog (optionnel)</label>
       <textarea v-model="form.tlogCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="ssh root@{domain} tlog" />
     </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Commande de Rollback (optionnel)</label>
+      <textarea v-model="form.rollbackCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">URL Healthcheck (optionnel)</label>
+      <input v-model="form.healthcheckUrl" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="https://{domain}" />
+    </div>
     <div v-if="error" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ error }}</div>
     <div class="flex justify-end">
       <button @click="save" :disabled="saving" class="px-4 py-2 bg-accent text-white rounded-md text-sm hover:bg-accent-hover disabled:opacity-50">

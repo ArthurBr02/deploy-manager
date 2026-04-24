@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 public class AppConfigService {
 
     private final AppConfigRepository configRepository;
+    private final AuditService auditService;
 
     public Map<String, String> getAll() {
         return configRepository.findAll().stream()
@@ -32,8 +33,12 @@ public class AppConfigService {
         settings.forEach((k, v) -> {
             AppConfig c = configRepository.findById(k)
                     .orElse(AppConfig.builder().key(k).build());
-            c.setValue(v);
-            configRepository.save(c);
+            String oldValue = c.getValue();
+            if (oldValue == null || !oldValue.equals(v)) {
+                c.setValue(v);
+                configRepository.save(c);
+                auditService.log("AppConfig", null, "UPDATE", k + "=" + oldValue, k + "=" + v);
+            }
         });
     }
 }

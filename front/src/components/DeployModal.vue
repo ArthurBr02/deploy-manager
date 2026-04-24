@@ -49,13 +49,17 @@ export default {
   },
   computed: {
     typeLabel() {
-      return { DEPLOY: 'Déploiement', GENERATE: 'Génération', DELIVER: 'Livraison' }[this.type] || this.type
+      return { DEPLOY: 'Déploiement', GENERATE: 'Génération', DELIVER: 'Livraison', ROLLBACK: 'Rollback' }[this.type] || this.type
     },
     resolvedCommand() {
-      const cmd = this.type === 'DEPLOY' ? this.host.deploymentCommand
+      let cmd = this.type === 'DEPLOY' ? this.host.deploymentCommand
         : this.type === 'GENERATE' ? this.host.generateCommand
-        : this.host.deliverCommand
-      if (!cmd) return (this.defaultDeployCommand || '').replace('{host}', this.host.name || '').replace('{ip}', this.host.ip || '').replace('{domain}', this.host.domain || '')
+        : this.type === 'DELIVER' ? this.host.deliverCommand
+        : this.host.rollbackCommand
+      if (!cmd && this.type === 'DEPLOY') cmd = this.defaultDeployCommand
+      
+      if (!cmd) return '(aucune commande définie)'
+      
       return cmd
         .replace('{host}', this.host.name || '')
         .replace('{ip}', this.host.ip || '')

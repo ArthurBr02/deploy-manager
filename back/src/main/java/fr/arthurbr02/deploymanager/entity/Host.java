@@ -39,6 +39,12 @@ public class Host {
     @Column(name = "tlog_command", columnDefinition = "TEXT")
     private String tlogCommand;
 
+    @Column(name = "rollback_command", columnDefinition = "TEXT")
+    private String rollbackCommand;
+
+    @Column(name = "healthcheck_url")
+    private String healthcheckUrl;
+
     @Column(name = "default_timeout")
     private Integer defaultTimeout;
 

@@ -60,6 +60,22 @@
           </div>
         </div>
 
+        <!-- Notifications -->
+        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+          <h2 class="font-semibold text-gray-900">Notifications</h2>
+          <div class="flex items-center gap-3">
+            <input type="checkbox" v-model="settings.notification_enabled" :true-value="'true'" :false-value="'false'" id="notif-enabled"
+              class="w-4 h-4 text-accent border-warm-border rounded focus:ring-accent" />
+            <label for="notif-enabled" class="text-sm font-medium text-gray-700">Activer les notifications (Webhooks)</label>
+          </div>
+          <div v-if="settings.notification_enabled === 'true'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">URL Webhook (Discord/Slack)</label>
+            <input v-model="settings.notification_webhook_url" placeholder="https://discord.com/api/webhooks/..."
+              class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            <p class="text-xs text-gray-400 mt-1">Les notifications seront envoyées en cas d'échec de déploiement.</p>
+          </div>
+        </div>
+
         <!-- SMTP -->
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <h2 class="font-semibold text-gray-900">Email (SMTP)</h2>

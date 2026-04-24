@@ -23,6 +23,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import jakarta.persistence.criteria.JoinType;
 
 import java.io.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -39,6 +43,11 @@ public class DeploymentService {
     private final UserRepository userRepository;
     private final UserHostPermissionRepository permissionRepository;
     private final AppConfigService configService;
+    private final NotificationService notificationService;
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(10))
+            .build();
 
     @Value("${app.log-dir:./logs/deployments}")
     private String logDir;
@@ -153,9 +162,68 @@ public class DeploymentService {
                 d.setLogs(readLogFile(logFile));
                 deploymentRepository.save(d);
                 broadcastStatusEvent(d.getHostId(), deploymentId, status);
+
+                if (status == DeploymentStatus.SUCCESS) {
+                    CompletableFuture.runAsync(() -> performHealthcheck(d));
+                } else if (status == DeploymentStatus.FAILURE) {
+                    notificationService.notifyDeploymentFailure(d);
+                }
             }
             broadcastLog(deploymentId, null);
             closeEmitters(deploymentId);
+        });
+    }
+
+    private void performHealthcheck(Deployment d) {
+        Host host = hostRepository.findById(d.getHostId()).orElse(null);
+        if (host == null) return;
+
+        String url = host.getHealthcheckUrl();
+        if (url == null || url.isBlank()) {
+            url = "https://{domain}";
+        }
+        url = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
+        // Remove single quotes added by ShellUtil.replaceVariables for URL
+        url = url.replace("'", "");
+
+        log.info("[Healthcheck] Checking {} for deployment {}", url, d.getId());
+        broadcastLog(d.getId(), "\n[SYSTEM] Lancement du healthcheck sur " + url + "...\n");
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 400) {
+                String msg = "[SYSTEM] Healthcheck RÉUSSI (Status: " + response.statusCode() + ")";
+                log.info(msg);
+                appendLogAndNotify(d, msg);
+            } else {
+                String msg = "[SYSTEM] Healthcheck ÉCHOUÉ (Status: " + response.statusCode() + ")";
+                log.warn(msg);
+                appendLogAndNotify(d, msg);
+            }
+        } catch (Exception e) {
+            String msg = "[SYSTEM] Healthcheck ERREUR: " + e.getMessage();
+            log.error(msg);
+            appendLogAndNotify(d, msg);
+        }
+    }
+
+    private void appendLogAndNotify(Deployment d, String message) {
+        deploymentRepository.findById(d.getId()).ifPresent(deployment -> {
+            String updatedLogs = (deployment.getLogs() != null ? deployment.getLogs() : "") + "\n" + message + "\n";
+            deployment.setLogs(updatedLogs);
+            deploymentRepository.save(deployment);
+            broadcastLog(d.getId(), message + "\n");
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(deployment.getLogFilePath(), true))) {
+                writer.write("\n" + message + "\n");
+            } catch (IOException e) {
+                log.error("Failed to append healthcheck to log file", e);
+            }
         });
     }
 
@@ -404,6 +472,7 @@ public class DeploymentService {
                     : configService.get("default_deploy_command", "sh /root/{host}/liv.sh");
             case GENERATE -> host.getGenerateCommand();
             case DELIVER -> host.getDeliverCommand();
+            case ROLLBACK -> host.getRollbackCommand();
         };
     }
 

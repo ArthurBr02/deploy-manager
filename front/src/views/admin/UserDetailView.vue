@@ -54,6 +54,10 @@
                 <input type="checkbox" :checked="getPerm(host.id, 'canEdit')" @change="togglePerm(host.id, 'canEdit', $event.target.checked)" class="rounded" />
                 Modifier
               </label>
+              <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input type="checkbox" :checked="getPerm(host.id, 'canExecute')" @change="togglePerm(host.id, 'canExecute', $event.target.checked)" class="rounded" />
+                Exécuter (SSH)
+              </label>
             </div>
           </div>
         </div>
@@ -102,9 +106,14 @@ export default {
       return this.permissions.find(p => p.hostId === hostId)?.[field] || false
     },
     togglePerm(hostId, field, value) {
-      const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false }
+      const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false, canExecute: false }
       const updated = { ...existing, [field]: value }
-      adminUsersService.setPermission(this.$route.params.id, { hostId, canDeploy: updated.canDeploy, canEdit: updated.canEdit }).then(() => {
+      adminUsersService.setPermission(this.$route.params.id, { 
+        hostId, 
+        canDeploy: updated.canDeploy, 
+        canEdit: updated.canEdit,
+        canExecute: updated.canExecute 
+      }).then(() => {
         const idx = this.permissions.findIndex(p => p.hostId === hostId)
         if (idx >= 0) this.permissions[idx] = updated
         else this.permissions.push(updated)

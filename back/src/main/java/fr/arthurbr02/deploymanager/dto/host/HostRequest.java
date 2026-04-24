@@ -32,5 +32,11 @@ public record HostRequest(
     @Size(max = 1000)
     String tlogCommand,
 
+    @Size(max = 1000)
+    String rollbackCommand,
+
+    @Size(max = 500)
+    String healthcheckUrl,
+
     Integer defaultTimeout
 ) {}

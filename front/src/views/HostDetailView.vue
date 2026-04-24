@@ -43,6 +43,12 @@
               <button v-if="host.canDeploy && host.deliverCommand" @click="openModal('DELIVER')" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted">
                 <TruckIcon class="w-3.5 h-3.5" /> Livrer
               </button>
+              <button v-if="host.canDeploy && host.rollbackCommand" @click="openModal('ROLLBACK')" class="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 rounded-md text-sm hover:bg-red-50">
+                <RefreshIcon class="w-3.5 h-3.5" /> Rollback
+              </button>
+              <RouterLink v-if="host.canExecute" :to="`/hosts/${host.id}/terminal`" class="flex items-center gap-1.5 px-3 py-1.5 border border-accent text-accent rounded-md text-sm hover:bg-accent/5">
+                <TerminalIcon class="w-3.5 h-3.5" /> Terminal
+              </RouterLink>
               <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted ml-auto">
                 <EditIcon class="w-3.5 h-3.5" /> Modifier
               </RouterLink>
