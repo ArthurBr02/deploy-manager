@@ -12,6 +12,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,9 @@ public class AuthService {
     private final PasswordResetTokenRepository resetTokenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.security.cookie-secure}")
+    private boolean cookieSecure;
 
     @Transactional
     public LoginResponse login(LoginRequest req, HttpServletResponse response) {
@@ -66,6 +70,7 @@ public class AuthService {
         cookie.setMaxAge(0);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
+        cookie.setSecure(cookieSecure);
         response.addCookie(cookie);
     }
 
@@ -103,7 +108,7 @@ public class AuthService {
         cookie.setHttpOnly(true);
         cookie.setPath("/");
         cookie.setMaxAge((int) (jwtUtil.getRefreshExpiryMillis() / 1000));
-        cookie.setSecure(false); // true en production HTTPS
+        cookie.setSecure(cookieSecure);
         response.addCookie(cookie);
     }
 
