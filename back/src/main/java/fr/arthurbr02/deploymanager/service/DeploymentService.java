@@ -36,6 +36,7 @@ public class DeploymentService {
 
     private final DeploymentRepository deploymentRepository;
     private final HostRepository hostRepository;
+    private final UserRepository userRepository;
     private final UserHostPermissionRepository permissionRepository;
     private final AppConfigService configService;
 
@@ -408,9 +409,9 @@ public class DeploymentService {
 
     private String replaceVariables(String command, Host host) {
         return command
-                .replace("{host}", host.getName() != null ? host.getName() : "")
-                .replace("{ip}", host.getIp() != null ? host.getIp() : "")
-                .replace("{domain}", host.getDomain() != null ? host.getDomain() : "");
+                .replace("{host}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getName()))
+                .replace("{ip}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getIp()))
+                .replace("{domain}", fr.arthurbr02.deploymanager.util.ShellUtil.sanitize(host.getDomain()));
     }
 
     private String readLogFile(String path) {

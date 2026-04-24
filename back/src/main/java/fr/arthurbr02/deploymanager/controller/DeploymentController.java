@@ -28,6 +28,15 @@ import java.util.UUID;
 public class DeploymentController {
 
     private final DeploymentService deploymentService;
+    private final fr.arthurbr02.deploymanager.security.JwtUtil jwtUtil;
+    private final fr.arthurbr02.deploymanager.repository.UserRepository userRepository;
+
+    @PostMapping("/sse-token")
+    @Operation(summary = "Générer un token à usage unique pour SSE")
+    public ResponseEntity<java.util.Map<String, String>> generateSseToken(@AuthenticationPrincipal User user) {
+        String token = jwtUtil.generateSseToken(user.getId());
+        return ResponseEntity.ok(java.util.Map.of("token", token));
+    }
 
     @PostMapping("/hosts/{hostId}/deploy")
     @Operation(summary = "Lancer un déploiement")
@@ -44,15 +53,28 @@ public class DeploymentController {
     }
 
     @GetMapping(value = "/{id}/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "Stream SSE des logs d'un déploiement")
-    public SseEmitter streamLogs(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+    @Operation(summary = "Stream SSE des logs d'un déploiement (nécessite un token SSE)")
+    public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token) {
+        User user = validateSseToken(token);
         return deploymentService.streamLogs(id, user);
     }
 
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "Stream SSE des changements de statut de déploiement")
-    public SseEmitter subscribeEvents(@AuthenticationPrincipal User user) {
+    @Operation(summary = "Stream SSE des changements de statut de déploiement (nécessite un token SSE)")
+    public SseEmitter subscribeEvents(@RequestParam String token) {
+        User user = validateSseToken(token);
         return deploymentService.subscribeEvents(user);
+    }
+
+    private User validateSseToken(String token) {
+        try {
+            var claims = jwtUtil.validateSseToken(token);
+            UUID userId = UUID.fromString(claims.getSubject());
+            return userRepository.findByIdAndDeletedAtIsNull(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        } catch (Exception e) {
+            throw new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE invalide ou expiré");
+        }
     }
 
     @GetMapping("/stats")

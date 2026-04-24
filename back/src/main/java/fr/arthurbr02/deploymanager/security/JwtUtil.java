@@ -74,4 +74,23 @@ public class JwtUtil {
     public long getRefreshExpiryMillis() {
         return parseDuration(refreshExpiry);
     }
+
+    public String generateSseToken(UUID userId) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("purpose", "sse")
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + 30000)) // 30 seconds
+                .signWith(accessKey())
+                .compact();
+    }
+
+    public Claims validateSseToken(String token) {
+        Claims claims = validateAccessToken(token);
+        if (!"sse".equals(claims.get("purpose"))) {
+            throw new JwtException("Token invalide pour SSE");
+        }
+        return claims;
+    }
 }

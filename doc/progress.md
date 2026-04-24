@@ -56,7 +56,7 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 
 ### Sprint 9 : Tests, Corrections et Déploiement
 - [x] Ajout des champs d'audit (created_by, updated_by, deleted_by) aux entités
-- [ ] Sécurité et tests unitaires
+- [x] Sécurité (CORS, JWT, Injection Shell, Validation DTO, SSE Tokens)
 - [x] Dockerisation (Dockerfile back/front, docker-compose, nginx.conf, .env.example)
 
 ## Phase 5 : Serveur MCP (v2)
