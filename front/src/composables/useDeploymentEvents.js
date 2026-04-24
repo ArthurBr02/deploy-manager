@@ -1,24 +1,41 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import axios from '@/api/axios'
 
 export function useDeploymentEvents(onEvent) {
   let src = null
 
+  const connect = async () => {
+    try {
+      // 1. Get temporary SSE token
+      const { data } = await axios.post('/deployments/sse-token')
+      const token = data.token
+
+      // 2. Open EventSource with this token
+      src = new EventSource(`/api/deployments/events?token=${token}`)
+      
+      src.addEventListener('open', () => console.log('[SSE] connected'))
+      src.addEventListener('deployment.status', e => {
+        try {
+          const parsed = JSON.parse(e.data)
+          onEvent(parsed)
+        } catch (err) {
+          console.error('[SSE] parse error:', err, e.data)
+        }
+      })
+      src.addEventListener('error', e => {
+        console.error('[SSE] error:', e)
+        if (src) src.close()
+        // Simple retry after error
+        setTimeout(connect, 3000)
+      })
+    } catch (err) {
+      console.error('[SSE] failed to get token:', err)
+    }
+  }
+
   onMounted(() => {
-    const auth = useAuthStore()
-    src = new EventSource(`/api/deployments/events?token=${auth.accessToken}`)
-    src.addEventListener('open', () => console.log('[SSE] connected'))
-    src.addEventListener('deployment.status', e => {
-      console.log('[SSE] deployment.status raw:', e.data)
-      try {
-        const parsed = JSON.parse(e.data)
-        console.log('[SSE] deployment.status parsed:', parsed)
-        onEvent(parsed)
-      } catch (err) {
-        console.error('[SSE] parse error:', err, e.data)
-      }
-    })
-    src.addEventListener('error', e => console.error('[SSE] error:', e))
+    connect()
   })
 
   onUnmounted(() => {

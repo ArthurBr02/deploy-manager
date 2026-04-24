@@ -134,7 +134,7 @@ public class McpController {
                 Map.of("name", "list_hosts", "description", "Liste les serveurs accessibles", "inputSchema", Map.of("type", "object", "properties", Map.of())),
                 Map.of("name", "get_host", "description", "Détails d'un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string")))),
                 Map.of("name", "update_host", "description", "Modifier un serveur", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "name", Map.of("type", "string"), "ip", Map.of("type", "string"), "domain", Map.of("type", "string"), "deploymentCommand", Map.of("type", "string"), "generateCommand", Map.of("type", "string"), "deliverCommand", Map.of("type", "string"), "defaultTimeout", Map.of("type", "integer")))),
-                Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("ALL", "FRONT", "BACK"))))),
+                Map.of("name", "deploy", "description", "Lancer un déploiement", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"), "type", Map.of("type", "string", "enum", List.of("ALL", "FRONT", "BACK")), "timeout", Map.of("type", "integer", "description", "Timeout en minutes (optionnel)")))),
                 Map.of("name", "get_deployments", "description", "Historique des déploiements", "inputSchema", Map.of("type", "object", "properties", Map.of("hostId", Map.of("type", "string"))))
         ));
 
@@ -179,7 +179,13 @@ public class McpController {
             case "deploy":
                 UUID dHostId = UUID.fromString((String) args.get("hostId"));
                 DeploymentType dType = DeploymentType.valueOf((String) args.get("type"));
-                DeploymentResponse resp = deploymentService.deploy(dHostId, new DeploymentRequest(dType), user);
+                Integer timeout = (Integer) args.get("timeout");
+                if (timeout == null) {
+                    // Try to get host's default timeout
+                    HostWithStatusResponse host = hostService.findById(dHostId, user);
+                    timeout = host.defaultTimeout() != null ? host.defaultTimeout() : 0;
+                }
+                DeploymentResponse resp = deploymentService.launch(dHostId, new DeploymentRequest(dType, timeout), user);
                 return textResponse("Déploiement lancé avec l'ID: " + resp.id());
 
             case "get_deployments":
@@ -222,11 +228,12 @@ public class McpController {
 
             case "get_settings":
                 checkAdmin(user);
-                return textResponse(configService.findAll());
+                return textResponse(configService.getAll());
 
             case "update_settings":
                 checkAdmin(user);
-                return textResponse(configService.update(new AppConfigRequest((Map<String, String>) args.get("settings"))));
+                configService.saveAll((Map<String, String>) args.get("settings"));
+                return textResponse("Paramètres mis à jour");
 
             default:
                 throw new RuntimeException("Outil inconnu: " + name);

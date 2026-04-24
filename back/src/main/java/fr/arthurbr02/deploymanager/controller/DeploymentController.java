@@ -5,6 +5,7 @@ import fr.arthurbr02.deploymanager.dto.deployment.DeploymentResponse;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentStatsResponse;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.service.DeploymentService;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,7 @@ public class DeploymentController {
     private final DeploymentService deploymentService;
     private final fr.arthurbr02.deploymanager.security.JwtUtil jwtUtil;
     private final fr.arthurbr02.deploymanager.repository.UserRepository userRepository;
+    private final fr.arthurbr02.deploymanager.service.PersonalAccessTokenService patService;
 
     @PostMapping("/sse-token")
     @Operation(summary = "Générer un token à usage unique pour SSE")
@@ -67,14 +69,17 @@ public class DeploymentController {
     }
 
     private User validateSseToken(String token) {
+        // 1. Try as JWT SSE token or Access Token
         try {
-            var claims = jwtUtil.validateSseToken(token);
+            Claims claims = jwtUtil.validateAccessToken(token);
             UUID userId = UUID.fromString(claims.getSubject());
             return userRepository.findByIdAndDeletedAtIsNull(userId)
                     .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-        } catch (Exception e) {
-            throw new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE invalide ou expiré");
-        }
+        } catch (Exception ignored) {}
+
+        // 2. Try as Personal Access Token (PAT)
+        return patService.validateToken(token)
+                .orElseThrow(() -> new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
     }
 
     @GetMapping("/stats")

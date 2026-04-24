@@ -30,6 +30,7 @@ import { useAuthStore } from '@/stores/auth'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import { XIcon } from '@/components/icons'
+import axios from '@/api/axios'
 
 export default {
   components: { StatusBadge, TypeBadge, XIcon },
@@ -64,26 +65,33 @@ export default {
       this.stopSse()
       this.$emit('close')
     },
-    startSse() {
+    async startSse() {
       this.isStreaming = true
       this.currentStatus = 'IN_PROGRESS'
-      const src = new EventSource(`/api/deployments/${this.deployment.id}/logs?token=${this.accessToken}`)
-      src.addEventListener('log', e => {
-        this.logContent += e.data
-        this.$nextTick(this.scrollBottom)
-      })
-      src.addEventListener('end', e => {
+      try {
+        const { data } = await axios.post('/deployments/sse-token')
+        const token = data.token
+        const src = new EventSource(`/api/deployments/${this.deployment.id}/logs?token=${token}`)
+        src.addEventListener('log', e => {
+          this.logContent += e.data
+          this.$nextTick(this.scrollBottom)
+        })
+        src.addEventListener('end', e => {
+          this.isStreaming = false
+          this.currentStatus = e.data !== 'done' ? e.data : 'SUCCESS'
+          src.close()
+          this._sse = null
+        })
+        src.addEventListener('error', () => {
+          this.isStreaming = false
+          src.close()
+          this._sse = null
+        })
+        this._sse = src
+      } catch (err) {
+        console.error('[SSE] Failed to get log token', err)
         this.isStreaming = false
-        this.currentStatus = e.data !== 'done' ? e.data : 'SUCCESS'
-        src.close()
-        this._sse = null
-      })
-      src.addEventListener('error', () => {
-        this.isStreaming = false
-        src.close()
-        this._sse = null
-      })
-      this._sse = src
+      }
     },
     stopSse() {
       if (this._sse) {
