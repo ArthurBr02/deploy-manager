@@ -347,26 +347,43 @@ public class DeploymentService {
     }
 
     @Transactional(readOnly = true)
-    public DeploymentStatsResponse getStats(String period, UUID hostId, String type) {
+    public DeploymentStatsResponse getStats(String period, UUID hostId, String type, User user) {
         LocalDateTime since = parsePeriod(period);
         DeploymentType deploymentType = parseType(type);
 
-        long total      = deploymentRepository.count(statsSpec(since, hostId, deploymentType, null));
-        long success    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.SUCCESS));
-        long failure    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.FAILURE));
-        long inProgress = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.IN_PROGRESS));
+        List<UUID> accessibleHostIds = null;
+        if (user.getRole() != Role.ADMIN) {
+            if (hostId != null) {
+                permissionRepository.findByUserIdAndHostId(user.getId(), hostId)
+                        .orElseThrow(() -> new ForbiddenException("Accès refusé à cet hôte"));
+            } else {
+                accessibleHostIds = permissionRepository.findByUserId(user.getId()).stream()
+                        .map(UserHostPermission::getHostId).collect(Collectors.toList());
+                if (accessibleHostIds.isEmpty()) {
+                    return new DeploymentStatsResponse(0, 0, 0, 0, "—");
+                }
+            }
+        }
 
-        Double medianSec = deploymentRepository.medianDurationFiltered(since, hostId, type);
+        long total      = deploymentRepository.count(statsSpec(since, hostId, deploymentType, null, accessibleHostIds));
+        long success    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.SUCCESS, accessibleHostIds));
+        long failure    = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.FAILURE, accessibleHostIds));
+        long inProgress = deploymentRepository.count(statsSpec(since, hostId, deploymentType, DeploymentStatus.IN_PROGRESS, accessibleHostIds));
+
+        Double medianSec = accessibleHostIds != null
+                ? deploymentRepository.medianDurationFilteredByHosts(since, accessibleHostIds, type)
+                : deploymentRepository.medianDurationFiltered(since, hostId, type);
         String medianDuration = formatMedianDuration(medianSec);
 
         return new DeploymentStatsResponse(total, success, failure, inProgress, medianDuration);
     }
 
-    private Specification<Deployment> statsSpec(LocalDateTime since, UUID hostId, DeploymentType type, DeploymentStatus status) {
+    private Specification<Deployment> statsSpec(LocalDateTime since, UUID hostId, DeploymentType type, DeploymentStatus status, List<UUID> accessibleHostIds) {
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
             if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
+            else if (accessibleHostIds != null) predicates.add(root.get("hostId").in(accessibleHostIds));
             if (type != null) predicates.add(cb.equal(root.get("type"), type));
             if (status != null) predicates.add(cb.equal(root.get("status"), status));
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));

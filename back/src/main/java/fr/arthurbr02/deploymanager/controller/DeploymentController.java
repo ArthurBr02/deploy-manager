@@ -70,10 +70,11 @@ public class DeploymentController {
     @GetMapping("/stats")
     @Operation(summary = "Statistiques des déploiements sur une période")
     public ResponseEntity<DeploymentStatsResponse> stats(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String period,
             @RequestParam(required = false) UUID hostId,
             @RequestParam(required = false) String type) {
-        return ResponseEntity.ok(deploymentService.getStats(period, hostId, type));
+        return ResponseEntity.ok(deploymentService.getStats(period, hostId, type, user));
     }
 
     @GetMapping("/export")
