@@ -170,7 +170,7 @@
                 <div class="text-[11px] mb-3 leading-relaxed">
                   <span class="text-gray-400 font-bold uppercase tracking-tighter mr-2">Entité</span>
                   <span class="text-gray-900 font-bold">{{ log.entityName }}</span>
-                  <span class="text-[10px] text-gray-400 font-mono ml-2 opacity-0 group-hover:opacity-100 transition-opacity">#{{ log.entityId.slice(0, 8) }}</span>
+                  <span class="text-[10px] text-gray-400 font-mono ml-2 opacity-0 group-hover:opacity-100 transition-opacity">#{{ log.entityId ? log.entityId.slice(0, 8) : '—' }}</span>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                   <div class="bg-white border border-warm-border/60 rounded-xl p-3 shadow-xs">

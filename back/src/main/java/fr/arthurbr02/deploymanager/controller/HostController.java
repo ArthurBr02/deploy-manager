@@ -14,6 +14,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 
 import java.util.*;
 
@@ -31,6 +33,23 @@ public class HostController {
     public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token) {
         User user = authService.validateSseToken(token);
         return hostService.streamTlog(id, user);
+    }
+
+    @GetMapping("/hosts/{id}/dump")
+    @Operation(summary = "Télécharger le dump SQL d'un hôte")
+    public ResponseEntity<Resource> downloadDump(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        Resource resource = hostService.getDump(id, user);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/sql"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+    }
+
+    @PostMapping("/hosts/{id}/dump-request")
+    @Operation(summary = "Demander un dump SQL aux admins")
+    public ResponseEntity<Void> requestDump(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        hostService.requestDump(id, user);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/hosts")

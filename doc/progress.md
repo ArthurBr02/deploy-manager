@@ -111,3 +111,12 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Adaptation des vues principales (Hôtes, Déploiements, Détail Hôte)
 - [x] Optimisation des formulaires et tables pour les petits écrans
 
+## Phase 11 : Fonctionnalités Avancées (2026)
+
+### Sprint 19 : MCP et Dumps SQL
+- [x] Paramètres de désactivation du MCP
+- [x] Gestion des dumps SQL (Backend & UI)
+- [x] Système de demande de dump par e-mail
+
+## Maintenance & Hotfixes
+- [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit avec `entityId` nul.

@@ -48,6 +48,15 @@
               <RouterLink v-if="host.canExecute" :to="`/hosts/${host.id}/terminal`" class="flex items-center gap-1.5 px-3 py-1.5 border border-accent text-accent rounded-md text-sm hover:bg-accent/5">
                 <TerminalIcon class="w-3.5 h-3.5" /> Terminal
               </RouterLink>
+
+              <!-- SQL Dump -->
+              <button v-if="host.isDumpAvailable" @click="downloadDump" :disabled="downloading" class="flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-600 rounded-md text-sm hover:bg-green-50 disabled:opacity-50">
+                <DownloadIcon class="w-3.5 h-3.5" /> {{ downloading ? 'Téléchargement...' : 'Télécharger le dump' }}
+              </button>
+              <button v-else @click="requestDump" :disabled="requesting" class="flex items-center gap-1.5 px-3 py-1.5 border border-amber-200 text-amber-600 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50">
+                <DatabaseIcon class="w-3.5 h-3.5" /> {{ requesting ? 'Demande envoyée' : 'Demander un dump' }}
+              </button>
+
               <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted sm:ml-auto">
                 <EditIcon class="w-3.5 h-3.5" /> Modifier
               </RouterLink>
@@ -163,10 +172,10 @@ import DeployModal from '@/components/DeployModal.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
 import HostEditForm from '@/components/HostEditForm.vue'
-import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon } from '@/components/icons'
+import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon, DatabaseIcon, DownloadIcon } from '@/components/icons'
 
 export default {
-  components: { StatusBadge, TypeBadge, UserBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon },
+  components: { StatusBadge, TypeBadge, UserBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon, DatabaseIcon, DownloadIcon },
   computed: {
     ...mapStores(useToastStore),
     ...mapState(useAuthStore, ['accessToken']),
@@ -191,6 +200,8 @@ export default {
       viewedDeployment: null,
       deploymentHistory: [],
       histLoading: false,
+      downloading: false,
+      requesting: false,
       tlogLines: [],
       tlogActive: false,
       _sseSource: null,
@@ -336,6 +347,32 @@ export default {
       } else {
         setTimeout(() => this.loadHistory(), 500)
       }
+    },
+    downloadDump() {
+      this.downloading = true
+      hostsService.downloadDump(this.host.id).then(res => {
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `${this.host.name}.sql`)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        this.toastStore.success('Téléchargement démarré')
+      }).catch(e => {
+        this.toastStore.error(e.response?.data?.error || 'Erreur lors du téléchargement')
+      }).finally(() => {
+        this.downloading = false
+      })
+    },
+    requestDump() {
+      this.requesting = true
+      hostsService.requestDump(this.host.id).then(() => {
+        this.toastStore.success('Demande envoyée aux administrateurs')
+      }).catch(e => {
+        this.toastStore.error(e.response?.data?.error || 'Erreur lors de la demande')
+        this.requesting = false
+      })
     },
   },
 }

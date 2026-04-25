@@ -45,6 +45,9 @@ public class Host {
     @Column(name = "healthcheck_url")
     private String healthcheckUrl;
 
+    @Column(name = "dump_folder")
+    private String dumpFolder;
+
     @Column(name = "default_timeout")
     private Integer defaultTimeout;
 

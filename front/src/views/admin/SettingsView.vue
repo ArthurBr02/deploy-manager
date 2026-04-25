@@ -58,6 +58,17 @@
             <input v-model="settings.default_timeout" type="number" min="0" class="w-full sm:w-40 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             <span class="text-xs text-gray-400 sm:ml-2">0 = désactivé</span>
           </div>
+          <div class="flex items-center gap-3 pt-2">
+            <input type="checkbox" v-model="settings.mcp_enabled" :true-value="'true'" :false-value="'false'" id="mcp-enabled"
+              class="w-4 h-4 text-accent border-warm-border rounded focus:ring-accent" />
+            <label for="mcp-enabled" class="text-sm font-medium text-gray-700">Activer le protocole MCP (Model Context Protocol)</label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Dossier de dumps SQL par défaut</label>
+            <input v-model="settings.default_dump_folder" placeholder="/var/www/dumps"
+              class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            <p class="text-xs text-gray-400 mt-1">Chemin absolu sur le serveur backend.</p>
+          </div>
         </div>
 
         <!-- Notifications -->

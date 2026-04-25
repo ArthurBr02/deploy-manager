@@ -38,5 +38,8 @@ public record HostRequest(
     @Size(max = 500)
     String healthcheckUrl,
 
+    @Size(max = 255)
+    String dumpFolder,
+
     Integer defaultTimeout
 ) {}

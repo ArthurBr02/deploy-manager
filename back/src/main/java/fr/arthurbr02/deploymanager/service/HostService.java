@@ -11,8 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,10 +28,12 @@ import java.util.stream.Collectors;
 public class HostService {
 
     private final HostRepository hostRepository;
+    private final UserRepository userRepository;
     private final UserHostPermissionRepository permissionRepository;
     private final DeploymentRepository deploymentRepository;
     private final AppConfigService configService;
     private final AuditService auditService;
+    private final MailService mailService;
 
     public List<HostWithStatusResponse> findAll(User currentUser) {
         List<Host> hosts = currentUser.getRole() == Role.ADMIN
@@ -53,7 +58,7 @@ public class HostService {
             boolean canDeploy = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanDeploy());
             boolean canEdit = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanEdit());
             boolean canExecute = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanExecute());
-            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute);
+            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute, isDumpAvailable(h));
         }).collect(Collectors.toList());
     }
 
@@ -75,7 +80,16 @@ public class HostService {
         boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
         boolean canExecute = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanExecute());
 
-        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute);
+        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, isDumpAvailable(host));
+    }
+
+    private boolean isDumpAvailable(Host h) {
+        String folder = h.getDumpFolder();
+        if (folder == null || folder.isBlank()) {
+            folder = configService.get("default_dump_folder", "/var/www/dumps");
+        }
+        File file = new File(folder, h.getName() + ".sql");
+        return file.exists() && file.isFile();
     }
 
     @Transactional
@@ -90,11 +104,12 @@ public class HostService {
                 .tlogCommand(req.tlogCommand())
                 .rollbackCommand(req.rollbackCommand())
                 .healthcheckUrl(req.healthcheckUrl())
+                .dumpFolder(req.dumpFolder())
                 .defaultTimeout(req.defaultTimeout())
                 .build();
         host = hostRepository.save(host);
         auditService.log("Host", host.getId(), "CREATE", null, host.getName());
-        return HostResponse.from(host);
+        return HostResponse.from(host, isDumpAvailable(host));
     }
 
     @Transactional
@@ -116,10 +131,11 @@ public class HostService {
         host.setTlogCommand(req.tlogCommand());
         host.setRollbackCommand(req.rollbackCommand());
         host.setHealthcheckUrl(req.healthcheckUrl());
+        host.setDumpFolder(req.dumpFolder());
         host.setDefaultTimeout(req.defaultTimeout());
         host = hostRepository.save(host);
         auditService.log("Host", host.getId(), "UPDATE", oldName, host.getName());
-        return HostResponse.from(host);
+        return HostResponse.from(host, isDumpAvailable(host));
     }
 
     public SseEmitter streamTlog(UUID hostId, User user) {
@@ -294,5 +310,48 @@ public class HostService {
             throw new RuntimeException("Erreur lors du parsing du fichier: " + e.getMessage());
         }
         return Map.of("updated", updated, "created", created, "skipped", skipped);
+    }
+
+    public Resource getDump(UUID id, User user) {
+        Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        // Access check
+        if (user.getRole() != Role.ADMIN) {
+            permissionRepository.findByUserIdAndHostId(user.getId(), id)
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+        }
+
+        String folder = host.getDumpFolder();
+        if (folder == null || folder.isBlank()) {
+            folder = configService.get("default_dump_folder", "/var/www/dumps");
+        }
+        File file = new File(folder, host.getName() + ".sql");
+        if (!file.exists() || !file.isFile()) {
+            throw new RuntimeException("Dump indisponible");
+        }
+
+        return new FileSystemResource(file);
+    }
+
+    public void requestDump(UUID id, User requester) {
+        Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        // Access check
+        if (requester.getRole() != Role.ADMIN) {
+            permissionRepository.findByUserIdAndHostId(requester.getId(), id)
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+        }
+
+        List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
+        String subject = "[Deploy Manager] Demande de dump SQL : " + host.getName();
+        String text = String.format("L'utilisateur %s %s (%s) demande un dump SQL pour l'hôte %s (%s).",
+                requester.getFirstName(), requester.getLastName(), requester.getEmail(),
+                host.getName(), host.getIp());
+
+        for (User admin : admins) {
+            mailService.sendEmail(admin.getEmail(), subject, text);
+        }
     }
 }

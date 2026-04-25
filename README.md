@@ -49,8 +49,9 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - CRUD utilisateurs (génération de mot de passe, gestion des rôles, avatar)
 - Page de détail utilisateur complète avec son historique de déploiements et son journal d'audit filtré
 - CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_execute`)
+- **Dumps SQL** : téléchargement direct du fichier `{host}.sql` si présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs)
 - Import de fichier Ansible `hosts-all` (parsing et mise à jour conditionnelle)
-- Paramètres globaux (commande tlog par défaut, notifications, shell, OS)
+- Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, shell, OS)
 - **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email)
 - **Notifications externes** : webhook Discord/Slack déclenché automatiquement sur les déploiements en échec
 
@@ -81,6 +82,121 @@ docker-compose up --build
 | Terminal WS | ws://localhost:8080/api/ws/terminal |
 
 Le port du frontend est configurable via `FRONTEND_PORT` dans `.env` (défaut : `3000`).
+
+---
+
+## Guide de déploiement en production (hors Docker)
+
+Ce guide détaille les étapes pour installer, builder et configurer Deploy Manager sur un serveur Linux (Debian/Ubuntu) sans utiliser Docker.
+
+### 1. Prérequis
+
+Assurez-vous que les dépendances suivantes sont installées :
+
+- **Java 21** : `sudo apt install openjdk-21-jdk`
+- **Node.js 20+** : via [nvm](https://github.com/nvm-sh/nvm) ou les dépôts officiels
+- **PostgreSQL 16+** : `sudo apt install postgresql`
+- **Maven 3.9+** : `sudo apt install maven`
+- **Nginx** : `sudo apt install nginx`
+
+### 2. Base de données
+
+1. Connectez-vous à PostgreSQL : `sudo -u postgres psql`
+2. Créez la base de données et l'utilisateur :
+   ```sql
+   CREATE DATABASE deploymanager;
+   CREATE USER deployuser WITH PASSWORD 'votre_mot_de_passe';
+   GRANT ALL PRIVILEGES ON DATABASE deploymanager TO deployuser;
+   ```
+
+### 3. Construction (Build)
+
+**Frontend** :
+```bash
+cd front
+npm install
+npm run build
+```
+Les fichiers statiques sont générés dans le dossier `front/dist`.
+
+**Backend** :
+```bash
+cd back
+mvn clean package -DskipTests
+```
+L'archive exécutable est générée dans `back/target/deploymanager-0.0.1-SNAPSHOT.jar`.
+
+### 4. Installation et Configuration
+
+1. Créez un répertoire pour l'application, par exemple `/opt/deploy-manager`.
+2. Copiez-y le fichier JAR du backend et le contenu du dossier `dist` du frontend.
+3. Créez un répertoire pour les logs et les dumps :
+   ```bash
+   sudo mkdir -p /var/log/deploy-manager
+   sudo mkdir -p /var/www/deploy-manager/dumps
+   sudo chown -R youruser:youruser /var/log/deploy-manager /var/www/deploy-manager/dumps
+   ```
+4. Configurez les variables d'environnement (voir section Variables ci-dessous).
+
+### 5. Service Système (systemd)
+
+Créez le fichier `/etc/systemd/system/deploy-manager.service` :
+
+```ini
+[Unit]
+Description=Deploy Manager Backend
+After=network.target postgresql.service
+
+[Service]
+User=youruser
+WorkingDirectory=/opt/deploy-manager
+ExecStart=/usr/bin/java -jar deploymanager-0.0.1-SNAPSHOT.jar \
+  --spring.datasource.url=jdbc:postgresql://localhost:5432/deploymanager \
+  --spring.datasource.username=deployuser \
+  --spring.datasource.password=votre_mot_de_passe \
+  --app.jwt.access-secret=VOTRE_SECRET_CHANGEZ_MOI \
+  --app.jwt.refresh-secret=VOTRE_SECRET_CHANGEZ_MOI
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Activez et démarrez le service : `sudo systemctl daemon-reload && sudo systemctl enable --now deploy-manager`
+
+### 6. Configuration Nginx (Reverse Proxy)
+
+Exemple de configuration `/etc/nginx/sites-available/deploy-manager` :
+
+```nginx
+server {
+    listen 80;
+    server_name votre-domaine.com;
+    root /opt/deploy-manager/front-dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api {
+        proxy_pass http://localhost:8080/api;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location /api/ws {
+        proxy_pass http://localhost:8080/api/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+    }
+}
+```
 
 ---
 
@@ -158,6 +274,8 @@ Les paramètres suivants sont configurables dans l'interface d'administration (`
 | Clé | Défaut | Description |
 |---|---|---|
 | `default_tlog_command` | `ssh root@{domain} tlog` | Commande de logs applicatifs par défaut |
+| `mcp_enabled` | `true` | Activer/Désactiver le protocole MCP |
+| `default_dump_folder` | `/var/www/dumps` | Dossier par défaut pour les dumps SQL sur le backend |
 | `notification_enabled` | `false` | Activer les notifications webhook |
 | `notification_webhook_url` | *(vide)* | URL du webhook Discord ou Slack |
 
@@ -236,6 +354,8 @@ deploy-manager/
 | `PUT` | `/api/hosts/{id}` | Modifier un hôte |
 | `DELETE` | `/api/admin/hosts/{id}` | Supprimer un hôte *(admin, soft delete)* |
 | `GET` | `/api/hosts/{id}/tlog` | Stream SSE des logs applicatifs |
+| `GET` | `/api/hosts/{id}/dump` | Télécharger le dump SQL de l'hôte |
+| `POST` | `/api/hosts/{id}/dump-request` | Demander un dump SQL aux admins (Email) |
 | `POST` | `/api/admin/hosts/import` | Import Ansible hosts-all *(admin)* |
 | `GET` | `/api/admin/users/{userId}/permissions` | Permissions d'un utilisateur *(admin)* |
 | `PUT` | `/api/admin/users/{userId}/permissions` | Modifier les permissions *(admin)* |

@@ -13,6 +13,7 @@ import fr.arthurbr02.deploymanager.dto.user.UpdateUserRequest;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.enums.DeploymentType;
 import fr.arthurbr02.deploymanager.enums.Role;
+import fr.arthurbr02.deploymanager.exception.ForbiddenException;
 import fr.arthurbr02.deploymanager.service.AppConfigService;
 import fr.arthurbr02.deploymanager.service.DeploymentService;
 import fr.arthurbr02.deploymanager.service.HostService;
@@ -44,6 +45,7 @@ public class McpController {
 
     @GetMapping("/mcp/sse")
     public SseEmitter establishSse(@RequestParam(required = false) String sessionId) {
+        checkMcpEnabled();
         String id = sessionId != null ? sessionId : UUID.randomUUID().toString();
         SseEmitter emitter = new SseEmitter(3600_000L); // 1 hour timeout
 
@@ -70,7 +72,7 @@ public class McpController {
             @RequestParam String sessionId,
             @RequestBody JsonRpcRequest request,
             @AuthenticationPrincipal User user) {
-
+        checkMcpEnabled();
         SseEmitter emitter = emitters.get(sessionId);
         if (emitter == null) {
             return ResponseEntity.notFound().build();
@@ -89,6 +91,12 @@ public class McpController {
         }).start();
 
         return ResponseEntity.accepted().build();
+    }
+
+    private void checkMcpEnabled() {
+        if (!"true".equals(configService.get("mcp_enabled", "true"))) {
+            throw new ForbiddenException("MCP est désactivé");
+        }
     }
 
     private JsonRpcResponse processRequest(JsonRpcRequest request, User user) {
@@ -150,6 +158,7 @@ public class McpController {
         updateHostProps.put("tlogCommand", Map.of("type", "string"));
         updateHostProps.put("rollbackCommand", Map.of("type", "string"));
         updateHostProps.put("healthcheckUrl", Map.of("type", "string"));
+        updateHostProps.put("dumpFolder", Map.of("type", "string"));
         updateHostProps.put("defaultTimeout", Map.of("type", "integer"));
         tools.add(Map.of("name", "update_host", "description", "Modifier un serveur", "inputSchema", Map.of("type", "object", "properties", updateHostProps)));
 
@@ -292,6 +301,7 @@ public class McpController {
                 (String) args.get("tlogCommand"),
                 (String) args.get("rollbackCommand"),
                 (String) args.get("healthcheckUrl"),
+                (String) args.get("dumpFolder"),
                 (Integer) args.get("defaultTimeout")
         );
     }

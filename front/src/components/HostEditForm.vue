@@ -43,6 +43,11 @@
       <label class="block text-sm font-medium text-gray-700 mb-1">URL Healthcheck (optionnel)</label>
       <input v-model="form.healthcheckUrl" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="https://{domain}" />
     </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Dossier de dumps SQL (optionnel)</label>
+      <input v-model="form.dumpFolder" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="/var/www/dumps/host1" />
+      <p class="text-[10px] text-gray-400 mt-0.5">Laisse vide pour utiliser le dossier par défaut des paramètres.</p>
+    </div>
     <div v-if="error" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ error }}</div>
     <div class="flex justify-end">
       <button @click="save" :disabled="saving" class="px-4 py-2 bg-accent text-white rounded-md text-sm hover:bg-accent-hover disabled:opacity-50">

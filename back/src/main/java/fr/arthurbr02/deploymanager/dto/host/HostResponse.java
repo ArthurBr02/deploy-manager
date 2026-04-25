@@ -5,12 +5,12 @@ import java.util.UUID;
 
 public record HostResponse(UUID id, String name, String ip, String domain,
                             String deploymentCommand, String generateCommand, String deliverCommand, String tlogCommand,
-                            String rollbackCommand, String healthcheckUrl,
+                            String rollbackCommand, String healthcheckUrl, String dumpFolder, boolean isDumpAvailable,
                             Integer defaultTimeout, LocalDateTime createdAt, LocalDateTime updatedAt) {
-    public static HostResponse from(Host h) {
+    public static HostResponse from(Host h, boolean isDumpAvailable) {
         return new HostResponse(h.getId(), h.getName(), h.getIp(), h.getDomain(),
                 h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(), h.getTlogCommand(),
-                h.getRollbackCommand(), h.getHealthcheckUrl(),
+                h.getRollbackCommand(), h.getHealthcheckUrl(), h.getDumpFolder(), isDumpAvailable,
                 h.getDefaultTimeout(), h.getCreatedAt(), h.getUpdatedAt());
     }
 }
