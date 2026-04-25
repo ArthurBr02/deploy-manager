@@ -37,6 +37,7 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final HostRepository hostRepository;
     private final UserHostPermissionRepository permissionRepository;
+    private final AppConfigService configService;
     
     private final Map<String, SshSession> sshSessions = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -87,19 +88,17 @@ public class TerminalHandler extends TextWebSocketHandler {
         // Connect to SSH
         try {
             JSch jsch = new JSch();
-            // In a real scenario, use private keys or stored credentials. 
-            // Here we assume local SSH access or predefined keys.
-            // For simplicity, we'll try to connect to the host.
-            // WARNING: This part needs actual SSH credentials. 
-            // In this project, we'll use a placeholder or system-level SSH if possible.
-            // Given the context, we use root or a configured user.
             
-            Session session = jsch.getSession("root", host.getIp(), 22);
+            String sshKeyPath = configService.get("ssh_key_path", null);
+            if (sshKeyPath != null && !sshKeyPath.isBlank()) {
+                jsch.addIdentity(sshKeyPath);
+            }
+
+            // Fallback to IP if domain is blank
+            String targetHost = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
+            
+            Session session = jsch.getSession("root", targetHost, 22);
             session.setConfig("StrictHostKeyChecking", "no");
-            // session.setPassword("..."); // Needs to be configured
-            
-            // IF we don't have credentials, we might use the local shell if the host is local
-            // or use a pre-configured SSH key.
             
             session.connect(30000);
             ChannelShell channel = (ChannelShell) session.openChannel("shell");

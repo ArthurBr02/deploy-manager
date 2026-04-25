@@ -136,9 +136,11 @@ L'archive exécutable est générée dans `back/target/deploymanager-0.0.1-SNAPS
    sudo mkdir -p /var/www/deploy-manager/dumps
    sudo chown -R youruser:youruser /var/log/deploy-manager /var/www/deploy-manager/dumps
    ```
-4. Configurez les variables d'environnement (voir section Variables ci-dessous).
+4. **Configuration des variables** : Attention, dans ce mode de déploiement, **le fichier `.env` n'est pas chargé automatiquement**. Vous devez passer les variables via le service systemd (voir ci-dessous).
 
 ### 5. Service Système (systemd)
+
+Le service doit inclure les variables d'environnement nécessaires à la production, notamment pour le CORS et la sécurité des cookies.
 
 Créez le fichier `/etc/systemd/system/deploy-manager.service` :
 
@@ -150,12 +152,21 @@ After=network.target postgresql.service
 [Service]
 User=youruser
 WorkingDirectory=/opt/deploy-manager
+# Les variables peuvent être passées en arguments (--) ou via Environment=
 ExecStart=/usr/bin/java -jar deploymanager-0.0.1-SNAPSHOT.jar \
   --spring.datasource.url=jdbc:postgresql://localhost:5432/deploymanager \
   --spring.datasource.username=deployuser \
   --spring.datasource.password=votre_mot_de_passe \
-  --app.jwt.access-secret=VOTRE_SECRET_CHANGEZ_MOI \
-  --app.jwt.refresh-secret=VOTRE_SECRET_CHANGEZ_MOI
+  --app.jwt.access-secret=VOTRE_SECRET_ALPHANUMERIQUE_32_CHARS \
+  --app.jwt.refresh-secret=VOTRE_AUTRE_SECRET_32_CHARS \
+  --app.cors.allowed-origins=https://votre-domaine.com \
+  --app.security.cookie-secure=true \
+  --server.forward-headers-strategy=native
+
+# Alternative : utiliser des variables d'environnement classiques
+# Environment="CORS_ALLOWED_ORIGINS=https://votre-domaine.com"
+# Environment="COOKIE_SECURE=true"
+
 SuccessExitStatus=143
 Restart=always
 RestartSec=10

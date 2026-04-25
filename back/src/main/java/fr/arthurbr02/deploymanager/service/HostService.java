@@ -151,7 +151,8 @@ public class HostService {
                 ? host.getTlogCommand()
                 : configService.get("default_tlog_command", "ssh root@{domain} tlog");
 
-        String resolved = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
+        String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
+        String resolved = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain);
 
         SseEmitter emitter = new SseEmitter(0L);
 

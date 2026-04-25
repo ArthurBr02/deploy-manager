@@ -64,6 +64,12 @@
             <label for="mcp-enabled" class="text-sm font-medium text-gray-700">Activer le protocole MCP (Model Context Protocol)</label>
           </div>
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clé SSH du serveur backend</label>
+            <input v-model="settings.ssh_key_path" placeholder="/root/.ssh/id_rsa"
+              class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            <p class="text-xs text-gray-400 mt-1">Chemin absolu vers la clé privée pour la connexion Terminal SSH.</p>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Dossier de dumps SQL par défaut</label>
             <input v-model="settings.default_dump_folder" placeholder="/var/www/dumps"
               class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -174,6 +180,7 @@ export default {
         shell_linux_arg: '-c',
         shell_windows_bin: 'cmd.exe',
         shell_windows_arg: '/c',
+        ssh_key_path: '',
         smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
       },
       pageLoading: false,
