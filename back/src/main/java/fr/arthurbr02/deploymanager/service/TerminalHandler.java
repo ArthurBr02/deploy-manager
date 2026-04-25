@@ -91,7 +91,16 @@ public class TerminalHandler extends TextWebSocketHandler {
             
             String sshKeyPath = configService.get("ssh_key_path", null);
             if (sshKeyPath != null && !sshKeyPath.isBlank()) {
-                jsch.addIdentity(sshKeyPath);
+                log.info("Using SSH identity: {}", sshKeyPath);
+                java.io.File keyFile = new java.io.File(sshKeyPath);
+                if (!keyFile.exists()) {
+                    log.warn("SSH identity file not found: {}", sshKeyPath);
+                    wsSession.sendMessage(new TextMessage("\r\n[WARN] Clé SSH non trouvée : " + sshKeyPath + ". Tentative sans clé...\r\n"));
+                } else {
+                    jsch.addIdentity(sshKeyPath);
+                }
+            } else {
+                log.info("No SSH identity path configured, using default JSch identities");
             }
 
             // Fallback to IP if domain is blank
@@ -99,6 +108,7 @@ public class TerminalHandler extends TextWebSocketHandler {
             String sshUser = (host.getSshUser() != null && !host.getSshUser().isBlank()) ? host.getSshUser() : "root";
             int sshPort = (host.getSshPort() != null && host.getSshPort() > 0) ? host.getSshPort() : 22;
             
+            log.info("Connecting to SSH: {}@{}:{}", sshUser, targetHost, sshPort);
             Session session = jsch.getSession(sshUser, targetHost, sshPort);
             session.setConfig("StrictHostKeyChecking", "no");
             
@@ -111,6 +121,7 @@ public class TerminalHandler extends TextWebSocketHandler {
             OutputStream out = channel.getOutputStream();
 
             sshSessions.put(wsSession.getId(), new SshSession(session, channel, out));
+            wsSession.sendMessage(new TextMessage("*** Session SSH établie ***\r\n"));
 
             executor.execute(() -> {
                 try {

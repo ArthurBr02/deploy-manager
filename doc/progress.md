@@ -124,3 +124,4 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Correction de la connexion WebSocket du terminal (URL `/api/ws/terminal`) et d'une erreur de nettoyage de l'addon `xterm`.
 - [x] Amélioration SSH : Ajout de la configuration de l'utilisateur et du port SSH par hôte (Backend & UI).
 - [x] Documentation : Mise à jour du guide de déploiement (README) pour la configuration explicite du répertoire de logs en production.
+- [x] Backend : Activation des logs applicatifs dans un fichier (`deploy-manager.log`) via la configuration Spring Boot.
