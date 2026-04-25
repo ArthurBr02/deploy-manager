@@ -27,6 +27,14 @@
               <input v-model="form.domain" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="vpn.arthurbr02.fr" />
               <p class="text-xs text-gray-400 mt-1">Obligatoire pour les créations manuelles.</p>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Utilisateur SSH</label>
+              <input v-model="form.sshUser" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="root" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Port SSH</label>
+              <input v-model.number="form.sshPort" type="number" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="22" />
+            </div>
           </div>
         </div>
 
@@ -110,6 +118,8 @@ export default {
         name: '',
         ip: '',
         domain: '',
+        sshUser: 'root',
+        sshPort: 22,
         deployCommand: '',
         generateCommand: '',
         deliverCommand: '',
@@ -138,6 +148,8 @@ export default {
         name: this.form.name,
         ip: this.form.ip,
         domain: this.form.domain || null,
+        sshUser: this.form.sshUser || 'root',
+        sshPort: this.form.sshPort || 22,
         deploymentCommand: this.form.deployCommand || null,
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,

@@ -96,8 +96,10 @@ public class TerminalHandler extends TextWebSocketHandler {
 
             // Fallback to IP if domain is blank
             String targetHost = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
+            String sshUser = (host.getSshUser() != null && !host.getSshUser().isBlank()) ? host.getSshUser() : "root";
+            int sshPort = (host.getSshPort() != null && host.getSshPort() > 0) ? host.getSshPort() : 22;
             
-            Session session = jsch.getSession("root", targetHost, 22);
+            Session session = jsch.getSession(sshUser, targetHost, sshPort);
             session.setConfig("StrictHostKeyChecking", "no");
             
             session.connect(30000);

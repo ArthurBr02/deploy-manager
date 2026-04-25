@@ -40,6 +40,14 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Domaine</label>
               <input v-model="form.domain" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Utilisateur SSH</label>
+              <input v-model="form.sshUser" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="root" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Port SSH</label>
+              <input v-model.number="form.sshPort" type="number" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="22" />
+            </div>
           </div>
 
           <div>
@@ -110,6 +118,8 @@ export default {
         name: '',
         ip: '',
         domain: '',
+        sshUser: '',
+        sshPort: null,
         deploymentCommand: '',
         generateCommand: '',
         deliverCommand: '',
@@ -129,6 +139,8 @@ export default {
           name: res.data.name || '',
           ip: res.data.ip || '',
           domain: res.data.domain || '',
+          sshUser: res.data.sshUser || '',
+          sshPort: res.data.sshPort ?? 22,
           deploymentCommand: res.data.deploymentCommand || '',
           generateCommand: res.data.generateCommand || '',
           deliverCommand: res.data.deliverCommand || '',

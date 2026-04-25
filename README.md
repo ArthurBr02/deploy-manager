@@ -160,8 +160,13 @@ ExecStart=/usr/bin/java -jar deploymanager-0.0.1-SNAPSHOT.jar \
   --app.jwt.access-secret=VOTRE_SECRET_ALPHANUMERIQUE_32_CHARS \
   --app.jwt.refresh-secret=VOTRE_AUTRE_SECRET_32_CHARS \
   --app.cors.allowed-origins=https://votre-domaine.com \
+  --app.log-dir=/var/log/deploy-manager \
   --app.security.cookie-secure=true \
   --server.forward-headers-strategy=native
+
+# Optionnel : Redirection des logs de l'application (Spring Boot) vers un fichier
+# StandardOutput=append:/var/log/deploy-manager/app.log
+# StandardError=inherit
 
 # Alternative : utiliser des variables d'environnement classiques
 # Environment="CORS_ALLOWED_ORIGINS=https://votre-domaine.com"

@@ -98,6 +98,8 @@ public class HostService {
                 .name(req.name())
                 .ip(req.ip())
                 .domain(req.domain())
+                .sshUser(req.sshUser() != null && !req.sshUser().isBlank() ? req.sshUser() : "root")
+                .sshPort(req.sshPort() != null ? req.sshPort() : 22)
                 .deploymentCommand(req.deploymentCommand())
                 .generateCommand(req.generateCommand())
                 .deliverCommand(req.deliverCommand())
@@ -125,6 +127,8 @@ public class HostService {
         host.setName(req.name());
         host.setIp(req.ip());
         host.setDomain(req.domain());
+        host.setSshUser(req.sshUser() != null && !req.sshUser().isBlank() ? req.sshUser() : "root");
+        host.setSshPort(req.sshPort() != null ? req.sshPort() : 22);
         host.setDeploymentCommand(req.deploymentCommand());
         host.setGenerateCommand(req.generateCommand());
         host.setDeliverCommand(req.deliverCommand());
@@ -147,9 +151,12 @@ public class HostService {
                     .orElseThrow(() -> new ForbiddenException("Accès refusé"));
         }
 
+        String sshUser = (host.getSshUser() != null && !host.getSshUser().isBlank()) ? host.getSshUser() : "root";
+        int sshPort = (host.getSshPort() != null && host.getSshPort() > 0) ? host.getSshPort() : 22;
+        
         String command = (host.getTlogCommand() != null && !host.getTlogCommand().isBlank())
                 ? host.getTlogCommand()
-                : configService.get("default_tlog_command", "ssh root@{domain} tlog");
+                : configService.get("default_tlog_command", "ssh -p " + sshPort + " " + sshUser + "@{domain} tlog");
 
         String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
         String resolved = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain);

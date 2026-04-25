@@ -27,6 +27,12 @@ public class Host {
 
     private String domain;
 
+    @Column(name = "ssh_user")
+    private String sshUser;
+
+    @Column(name = "ssh_port")
+    private Integer sshPort;
+
     @Column(name = "deployment_command", columnDefinition = "TEXT")
     private String deploymentCommand;
 

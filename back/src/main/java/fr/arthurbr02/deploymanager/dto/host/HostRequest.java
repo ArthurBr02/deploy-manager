@@ -19,6 +19,11 @@ public record HostRequest(
     @Pattern(regexp = "^$|^([a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+\\.[a-z]{2,10}$", message = "Domaine invalide")
     String domain,
 
+    @Size(max = 100)
+    String sshUser,
+
+    Integer sshPort,
+
     @Size(max = 1000)
     String deploymentCommand,
 
