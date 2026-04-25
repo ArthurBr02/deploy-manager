@@ -121,3 +121,4 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit avec `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).
+- [x] Correction de la connexion WebSocket du terminal (URL `/api/ws/terminal`) et d'une erreur de nettoyage de l'addon `xterm`.

@@ -55,7 +55,10 @@ export default {
   unmounted() {
     window.removeEventListener('resize', this.onResize)
     if (this.ws) this.ws.close()
-    if (this.term) this.term.dispose()
+    if (this.term) {
+      // fitAddon is disposed automatically when term is disposed if it was loaded
+      this.term.dispose()
+    }
   },
   methods: {
     loadHost() {
@@ -87,7 +90,7 @@ export default {
     connect() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const hostId = this.$route.params.id
-      const url = `${protocol}//${window.location.host}/ws/terminal?token=${this.accessToken}&hostId=${hostId}`
+      const url = `${protocol}//${window.location.host}/api/ws/terminal?token=${this.accessToken}&hostId=${hostId}`
       
       this.ws = new WebSocket(url)
       
