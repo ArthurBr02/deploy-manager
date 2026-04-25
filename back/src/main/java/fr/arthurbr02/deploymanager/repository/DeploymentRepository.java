@@ -22,6 +22,7 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID>, J
     Optional<Deployment> findLastByHostId(UUID hostId);
 
     List<Deployment> findByHostIdAndStatus(UUID hostId, DeploymentStatus status);
+    List<Deployment> findByStatus(DeploymentStatus status);
     boolean existsByHostIdAndStatus(UUID hostId, DeploymentStatus status);
 
     @Query("SELECT d FROM Deployment d WHERE d.hostId IN :hostIds ORDER BY d.createdAt DESC")

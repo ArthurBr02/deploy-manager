@@ -6,6 +6,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      leak-detection-threshold: 10000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -60,3 +65,4 @@ springdoc:
 logging:
   level:
     org.apache.catalina.connector: WARN
+    org.springframework.web.servlet.DispatcherServlet: WARN

@@ -12,7 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -127,19 +128,42 @@ public class DeploymentService {
             Process process = pb.start();
             runningProcesses.put(deploymentId, process);
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                 BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String logLine = line + "\n";
-                    writer.write(logLine);
-                    writer.flush();
-                    broadcastLog(deploymentId, logLine);
+            // Read stdout in a separate thread so we can enforce timeout independently
+            CompletableFuture<Void> stdoutReader = CompletableFuture.runAsync(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                     BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String logLine = line + "\n";
+                        writer.write(logLine);
+                        writer.flush();
+                        broadcastLog(deploymentId, logLine);
+                    }
+                } catch (IOException ignored) {}
+            });
+
+            int timeout = deployment.getTimeout();
+            if (timeout > 0) {
+                boolean finished = process.waitFor(timeout, TimeUnit.MINUTES);
+                if (!finished) {
+                    process.destroyForcibly();
+                    String timeoutMsg = "\n[TIMEOUT] Déploiement annulé après " + timeout + " minutes\n";
+                    try (BufferedWriter w = new BufferedWriter(new FileWriter(logFile, true))) {
+                        w.write(timeoutMsg);
+                        w.flush();
+                    } catch (IOException ignored) {}
+                    broadcastLog(deploymentId, timeoutMsg);
+                    finalStatus = DeploymentStatus.FAILURE;
                 }
+            } else {
+                process.waitFor();
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) finalStatus = DeploymentStatus.FAILURE;
+            try { stdoutReader.join(); } catch (Exception ignored) {}
+
+            if (finalStatus != DeploymentStatus.FAILURE && process.exitValue() != 0) {
+                finalStatus = DeploymentStatus.FAILURE;
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -180,6 +204,7 @@ public class DeploymentService {
 
         String url = host.getHealthcheckUrl();
         if (url == null || url.isBlank()) {
+            if (host.getDomain() == null || host.getDomain().isBlank()) return;
             url = "https://{domain}";
         }
         url = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
@@ -326,24 +351,20 @@ public class DeploymentService {
         if (list != null) list.forEach(e -> { try { e.complete(); } catch (Exception ignored) {} });
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @EventListener(ApplicationReadyEvent.class)
     @Transactional
-    public void checkTimeouts() {
-        deploymentRepository.findAll().stream()
-                .filter(d -> d.getStatus() == DeploymentStatus.IN_PROGRESS
-                        && d.getTimeout() > 0
-                        && d.getCreatedAt().plusMinutes(d.getTimeout()).isBefore(LocalDateTime.now()))
-                .forEach(d -> {
-                    Process p = runningProcesses.get(d.getId());
-                    if (p != null) p.destroyForcibly();
-                    d.setStatus(DeploymentStatus.FAILURE);
-                    String logs = readLogFile(d.getLogFilePath());
-                    d.setLogs((logs != null ? logs : "") + "\n[TIMEOUT] Déploiement annulé après " + d.getTimeout() + " minutes");
-                    deploymentRepository.save(d);
-                    broadcastStatusEvent(d.getHostId(), d.getId(), DeploymentStatus.FAILURE);
-                    broadcastLog(d.getId(), null);
-                    closeEmitters(d.getId());
-                });
+    public void cleanupOrphanedDeployments() {
+        List<Deployment> inProgress = deploymentRepository.findByStatus(DeploymentStatus.IN_PROGRESS);
+        if (inProgress.isEmpty()) return;
+        LocalDateTime now = LocalDateTime.now();
+        for (Deployment d : inProgress) {
+            log.warn("[Boot] Orphaned deployment {} on host {} marked as FAILURE", d.getId(), d.getHostId());
+            d.setStatus(DeploymentStatus.FAILURE);
+            d.setFinishedAt(now);
+            d.setLogs((d.getLogs() != null ? d.getLogs() : "") + "\n[SYSTÈME] Déploiement interrompu par redémarrage du serveur");
+            deploymentRepository.save(d);
+        }
+        log.info("[Boot] Cleaned up {} orphaned deployment(s)", inProgress.size());
     }
 
     @Transactional(readOnly = true)
