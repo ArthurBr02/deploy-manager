@@ -152,6 +152,8 @@ public class McpController {
         updateHostProps.put("name", Map.of("type", "string"));
         updateHostProps.put("ip", Map.of("type", "string"));
         updateHostProps.put("domain", Map.of("type", "string"));
+        updateHostProps.put("sshUser", Map.of("type", "string"));
+        updateHostProps.put("sshPort", Map.of("type", "integer"));
         updateHostProps.put("deploymentCommand", Map.of("type", "string"));
         updateHostProps.put("generateCommand", Map.of("type", "string"));
         updateHostProps.put("deliverCommand", Map.of("type", "string"));
@@ -295,6 +297,8 @@ public class McpController {
                 (String) args.get("name"),
                 (String) args.get("ip"),
                 (String) args.get("domain"),
+                (String) args.get("sshUser"),
+                (Integer) args.get("sshPort"),
                 (String) args.get("deploymentCommand"),
                 (String) args.get("generateCommand"),
                 (String) args.get("deliverCommand"),
