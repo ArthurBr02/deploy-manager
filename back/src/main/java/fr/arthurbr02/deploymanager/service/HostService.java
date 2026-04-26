@@ -187,9 +187,8 @@ public class HostService {
                 }
                 ProcessBuilder pb;
                 if (!"windows".equalsIgnoreCase(serverOs) && !finalCommand.matches("^ssh(\\s+.*|$)")) {
-                    // Non-SSH command on Linux: force line-buffering via stdbuf
-                    // SSH commands already get PTY via -t -t flag injected above
-                    pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, finalCommand);
+                    // Non-SSH command on Linux: force line-buffering via unbuffer (expect package)
+                    pb = new ProcessBuilder("unbuffer", shellBin, shellArg, finalCommand);
                 } else {
                     pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
                 }

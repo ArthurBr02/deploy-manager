@@ -35,12 +35,6 @@ public class HostController {
     @Operation(summary = "Stream SSE des logs applicatifs (tlog) (nécessite un token SSE)")
     public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
         User user = authService.validateSseToken(token);
-        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
-        response.setHeader("X-Accel-Buffering", "no");
-        response.setHeader("Cache-Control", "no-cache");
-        try {
-            response.flushBuffer();
-        } catch (IOException ignored) {}
         return hostService.streamTlog(id, user);
     }
 

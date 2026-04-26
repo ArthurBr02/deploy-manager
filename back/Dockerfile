@@ -7,7 +7,7 @@ RUN apk add --no-cache maven && mvn package -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-RUN apk add --no-cache bash openssh-client rsync curl git && \
+RUN apk add --no-cache bash openssh-client rsync curl git expect && \
     mkdir -p /app/logs/deployments
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
