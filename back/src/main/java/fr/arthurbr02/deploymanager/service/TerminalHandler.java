@@ -89,18 +89,14 @@ public class TerminalHandler extends TextWebSocketHandler {
         try {
             JSch jsch = new JSch();
             
-            String sshKeyPath = configService.get("ssh_key_path", null);
-            if (sshKeyPath != null && !sshKeyPath.isBlank()) {
-                log.info("Using SSH identity: {}", sshKeyPath);
-                java.io.File keyFile = new java.io.File(sshKeyPath);
-                if (!keyFile.exists()) {
-                    log.warn("SSH identity file not found: {}", sshKeyPath);
-                    wsSession.sendMessage(new TextMessage("\r\n[WARN] Clé SSH non trouvée : " + sshKeyPath + ". Tentative sans clé...\r\n"));
-                } else {
-                    jsch.addIdentity(sshKeyPath);
-                }
+            String sshKeyPath = configService.get("ssh_key_path", "/root/.ssh/id_rsa");
+            log.info("Using SSH identity: {}", sshKeyPath);
+            java.io.File keyFile = new java.io.File(sshKeyPath);
+            if (!keyFile.exists()) {
+                log.warn("SSH identity file not found: {}", sshKeyPath);
+                wsSession.sendMessage(new TextMessage("\r\n[WARN] Clé SSH non trouvée : " + sshKeyPath + "\r\n"));
             } else {
-                log.info("No SSH identity path configured, using default JSch identities");
+                jsch.addIdentity(sshKeyPath);
             }
 
             // Fallback to IP if domain is blank
