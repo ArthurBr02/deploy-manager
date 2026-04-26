@@ -193,11 +193,6 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Dossier de dumps SQL</label>
                 <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800">{{ host.dumpFolder || '—' }}</div>
               </div>
-              <div v-if="host.canEdit" class="flex justify-end">
-                <RouterLink :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-md text-sm hover:bg-accent-hover">
-                  <EditIcon class="w-3.5 h-3.5" /> Modifier
-                </RouterLink>
-              </div>
             </div>
           </div>
         </div>
