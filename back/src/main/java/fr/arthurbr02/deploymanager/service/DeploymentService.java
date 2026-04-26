@@ -131,7 +131,10 @@ public class DeploymentService {
             if ("windows".equalsIgnoreCase(serverOs)) {
                 pb = new ProcessBuilder(shellBin, shellArg, command);
             } else {
-                pb = new ProcessBuilder("unbuffer", shellBin, shellArg, command);
+                // Use stdbuf for native binaries and environment variables for Java/Python
+                pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, command);
+                pb.environment().put("PYTHONUNBUFFERED", "1");
+                pb.environment().put("JAVA_TOOL_OPTIONS", "-Dfile.encoding=UTF-8");
             }
             pb.redirectErrorStream(true);
             Process process = pb.start();

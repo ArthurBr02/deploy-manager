@@ -98,6 +98,7 @@ Assurez-vous que les dépendances suivantes sont installées :
 - **PostgreSQL 16+** : `sudo apt install postgresql`
 - **Maven 3.9+** : `sudo apt install maven`
 - **Nginx** : `sudo apt install nginx`
+- **Expect** : `sudo apt install expect` (nécessaire pour le streaming des logs en temps réel)
 
 ### 2. Base de données
 

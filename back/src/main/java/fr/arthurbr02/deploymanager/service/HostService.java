@@ -187,8 +187,10 @@ public class HostService {
                 }
                 ProcessBuilder pb;
                 if (!"windows".equalsIgnoreCase(serverOs) && !finalCommand.matches("^ssh(\\s+.*|$)")) {
-                    // Non-SSH command on Linux: force line-buffering via unbuffer (expect package)
-                    pb = new ProcessBuilder("unbuffer", shellBin, shellArg, finalCommand);
+                    // Non-SSH command on Linux: force line-buffering via stdbuf and env vars
+                    pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, finalCommand);
+                    pb.environment().put("PYTHONUNBUFFERED", "1");
+                    pb.environment().put("JAVA_TOOL_OPTIONS", "-Dfile.encoding=UTF-8");
                 } else {
                     pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
                 }
