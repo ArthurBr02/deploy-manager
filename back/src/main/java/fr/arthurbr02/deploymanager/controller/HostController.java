@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.controller;
 
 import fr.arthurbr02.deploymanager.dto.host.*;
 import fr.arthurbr02.deploymanager.entity.User;
+import fr.arthurbr02.deploymanager.service.AuthService;
 import fr.arthurbr02.deploymanager.service.HostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,7 +27,7 @@ import java.util.*;
 public class HostController {
 
     private final HostService hostService;
-    private final fr.arthurbr02.deploymanager.service.AuthService authService;
+    private final AuthService authService;
 
     @GetMapping(value = "/hosts/{id}/tlog", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs applicatifs (tlog) (nécessite un token SSE)")

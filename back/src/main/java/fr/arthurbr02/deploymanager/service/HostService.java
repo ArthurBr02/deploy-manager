@@ -1,6 +1,7 @@
 package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.host.*;
+import fr.arthurbr02.deploymanager.util.ShellUtil;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.Role;
 import fr.arthurbr02.deploymanager.exception.ForbiddenException;
@@ -16,6 +17,7 @@ import org.springframework.core.io.Resource;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -159,7 +161,7 @@ public class HostService {
                 : configService.get("default_tlog_command", "ssh -p " + sshPort + " " + sshUser + "@{domain} tlog");
 
         String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
-        String resolved = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain);
+        String resolved = ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain);
 
         SseEmitter emitter = new SseEmitter(0L);
 
@@ -176,7 +178,11 @@ public class HostService {
                     shellArg = configService.get("shell_linux_arg", "-c");
                 }
 
-                ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, resolved);
+                // On Linux, wrap with stdbuf to force line-buffered output (fixes SSH buffering with tail -f)
+                String finalCommand = "linux".equalsIgnoreCase(serverOs)
+                        ? "stdbuf -oL " + resolved
+                        : resolved;
+                ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
                 pb.redirectErrorStream(true);
                 process = pb.start();
                 final Process finalProcess = process;
@@ -197,13 +203,20 @@ public class HostService {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        emitter.send(SseEmitter.event().name("log").data(line + "\n"));
+                        try {
+                            emitter.send(SseEmitter.event().name("log").data(line + "\n"));
+                        } catch (IOException clientGone) {
+                            log.debug("[Tlog] Client disconnected for host {}, stopping stream", hostId);
+                            return;
+                        }
                     }
                 }
 
                 int exitCode = process.waitFor();
-                emitter.send(SseEmitter.event().name("end").data("Exit code: " + exitCode));
-                emitter.complete();
+                try {
+                    emitter.send(SseEmitter.event().name("end").data("Exit code: " + exitCode));
+                    emitter.complete();
+                } catch (IOException ignored) {}
 
             } catch (Exception e) {
                 log.error("Tlog error for host {}", hostId, e);

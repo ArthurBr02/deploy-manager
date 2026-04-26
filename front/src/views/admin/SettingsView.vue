@@ -17,7 +17,7 @@
             <p class="text-xs text-gray-400 mt-1">Variables disponibles : {host}, {ip}, {domain}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Commande Tlog par défaut</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commande de logs applicatifs par défaut</label>
             <textarea v-model="settings.default_tlog_command" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             <p class="text-xs text-gray-400 mt-1">Variables disponibles : {host}, {ip}, {domain}</p>
           </div>

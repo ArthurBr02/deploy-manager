@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.service;
 
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import fr.arthurbr02.deploymanager.entity.Host;
 import fr.arthurbr02.deploymanager.entity.User;
@@ -91,7 +92,7 @@ public class TerminalHandler extends TextWebSocketHandler {
             
             String sshKeyPath = configService.get("ssh_key_path", "/root/.ssh/id_rsa");
             log.info("Using SSH identity: {}", sshKeyPath);
-            java.io.File keyFile = new java.io.File(sshKeyPath);
+            File keyFile = new File(sshKeyPath);
             if (!keyFile.exists()) {
                 log.warn("SSH identity file not found: {}", sshKeyPath);
                 wsSession.sendMessage(new TextMessage("\r\n[WARN] Clé SSH non trouvée : " + sshKeyPath + "\r\n"));
@@ -135,7 +136,7 @@ public class TerminalHandler extends TextWebSocketHandler {
                 }
             });
 
-        } catch (com.jcraft.jsch.JSchException e) {
+        } catch (JSchException e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";
             if (msg.contains("Auth fail") || msg.contains("USERAUTH fail")) {
                 log.error("SSH auth failed for terminal (no valid key configured)", e);

@@ -4,6 +4,8 @@ import fr.arthurbr02.deploymanager.dto.deployment.DeploymentRequest;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentResponse;
 import fr.arthurbr02.deploymanager.dto.deployment.DeploymentStatsResponse;
 import fr.arthurbr02.deploymanager.entity.User;
+import fr.arthurbr02.deploymanager.security.JwtUtil;
+import fr.arthurbr02.deploymanager.service.AuthService;
 import fr.arthurbr02.deploymanager.service.DeploymentService;
 import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +21,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,14 +32,14 @@ import java.util.UUID;
 public class DeploymentController {
 
     private final DeploymentService deploymentService;
-    private final fr.arthurbr02.deploymanager.security.JwtUtil jwtUtil;
-    private final fr.arthurbr02.deploymanager.service.AuthService authService;
+    private final JwtUtil jwtUtil;
+    private final AuthService authService;
 
     @PostMapping("/sse-token")
     @Operation(summary = "Générer un token à usage unique pour SSE")
-    public ResponseEntity<java.util.Map<String, String>> generateSseToken(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Map<String, String>> generateSseToken(@AuthenticationPrincipal User user) {
         String token = jwtUtil.generateSseToken(user.getId());
-        return ResponseEntity.ok(java.util.Map.of("token", token));
+        return ResponseEntity.ok(Map.of("token", token));
     }
 
     @PostMapping("/hosts/{hostId}/deploy")

@@ -1,6 +1,7 @@
 package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.auth.*;
+import fr.arthurbr02.deploymanager.exception.ForbiddenException;
 import fr.arthurbr02.deploymanager.entity.PasswordResetToken;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.PasswordResetTokenRepository;
@@ -46,7 +47,7 @@ public class AuthService {
 
         // 2. Try as Personal Access Token (PAT)
         return patService.validateToken(token)
-                .orElseThrow(() -> new fr.arthurbr02.deploymanager.exception.ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
+                .orElseThrow(() -> new ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
     }
 
     @Transactional

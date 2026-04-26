@@ -16,6 +16,7 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -130,7 +131,7 @@ public class UserService {
     }
 
     private byte[] compressImage(byte[] input) throws IOException {
-        BufferedImage original = ImageIO.read(new java.io.ByteArrayInputStream(input));
+        BufferedImage original = ImageIO.read(new ByteArrayInputStream(input));
         if (original == null) throw new RuntimeException("Format d'image non supporté");
 
         int w = original.getWidth();

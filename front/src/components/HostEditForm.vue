@@ -32,7 +32,7 @@
       <textarea v-model="form.deliverCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
     </div>
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Commande Tlog (optionnel)</label>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Commande de logs applicatifs (optionnel)</label>
       <textarea v-model="form.tlogCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="ssh root@{domain} tlog" />
     </div>
     <div>

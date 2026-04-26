@@ -102,11 +102,11 @@
               </div>
             </div>
 
-            <!-- Tlog (Real-time App Logs) -->
+            <!-- Logs de l'application (Real-time App Logs) -->
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Flux Application (Tlog)</h3>
+                  <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Logs de l'application</h3>
                   <span v-if="tlogActive" class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -122,7 +122,7 @@
                   
                   <div v-if="!tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-500 italic text-center p-6">
                     <RefreshIcon class="w-8 h-8 mb-3 opacity-20 text-accent animate-pulse" />
-                    <p>Démarrez le flux <code class="bg-white/5 px-1 rounded not-italic">tlog</code> pour voir les logs applicatifs.</p>
+                    <p>Démarrez le flux pour voir les logs applicatifs en direct.</p>
                   </div>
                   
                   <div v-if="tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-400 italic">
@@ -310,12 +310,27 @@ export default {
           if (this.$refs.tlogEl) this.$refs.tlogEl.scrollTop = this.$refs.tlogEl.scrollHeight
         })
       })
-      
+
+      src.addEventListener('end', () => {
+        src.close()
+        this._tlogSse = null
+        this.tlogActive = false
+      })
+
+      src.addEventListener('error', e => {
+        const msg = e.data || 'Erreur inconnue'
+        this.tlogLines.push(`[ERREUR] ${msg}`)
+        src.close()
+        this._tlogSse = null
+        this.tlogActive = false
+      })
+
       src.onerror = () => {
+        if (src.readyState === EventSource.CLOSED) return
         this.stopTlog()
-        this.toastStore.error('Erreur de connexion au flux tlog')
+        this.toastStore.error('Connexion au flux de logs perdue')
       }
-      
+
       this._tlogSse = src
     },
     stopTlog() {

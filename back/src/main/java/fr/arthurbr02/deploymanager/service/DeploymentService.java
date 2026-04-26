@@ -6,6 +6,7 @@ import fr.arthurbr02.deploymanager.dto.deployment.DeploymentStatsResponse;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.*;
 import fr.arthurbr02.deploymanager.exception.ForbiddenException;
+import fr.arthurbr02.deploymanager.util.ShellUtil;
 import fr.arthurbr02.deploymanager.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +23,11 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.criteria.JoinType;
+import Predicate;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -47,7 +51,7 @@ public class DeploymentService {
     private final NotificationService notificationService;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(java.time.Duration.ofSeconds(10))
+            .connectTimeout(Duration.ofSeconds(10))
             .build();
 
     @Value("${app.log-dir:./logs/deployments}")
@@ -207,7 +211,7 @@ public class DeploymentService {
             if (host.getDomain() == null || host.getDomain().isBlank()) return;
             url = "https://{domain}";
         }
-        url = fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
+        url = ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
         // Remove single quotes added by ShellUtil.replaceVariables for URL
         url = url.replace("'", "");
 
@@ -401,13 +405,13 @@ public class DeploymentService {
 
     private Specification<Deployment> statsSpec(LocalDateTime since, UUID hostId, DeploymentType type, DeploymentStatus status, List<UUID> accessibleHostIds) {
         return (root, query, cb) -> {
-            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            List<Predicate> predicates = new ArrayList<>();
             if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
             if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
             else if (accessibleHostIds != null) predicates.add(root.get("hostId").in(accessibleHostIds));
             if (type != null) predicates.add(cb.equal(root.get("type"), type));
             if (status != null) predicates.add(cb.equal(root.get("status"), status));
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
@@ -450,7 +454,7 @@ public class DeploymentService {
             String userEmail = full.getUser() != null ? full.getUser().getEmail() : "";
             String duration = "";
             if (full.getCreatedAt() != null && full.getFinishedAt() != null) {
-                long secs = java.time.Duration.between(full.getCreatedAt(), full.getFinishedAt()).getSeconds();
+                long secs = Duration.between(full.getCreatedAt(), full.getFinishedAt()).getSeconds();
                 duration = String.valueOf(secs);
             }
             sb.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
@@ -463,7 +467,7 @@ public class DeploymentService {
                     full.getFinishedAt() != null ? full.getFinishedAt() : "",
                     duration));
         }
-        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private String escapeCsv(String value) {
@@ -476,7 +480,7 @@ public class DeploymentService {
 
     private Specification<Deployment> buildSpec(User user, UUID hostId, UUID userId, String search, String status, String type, String period) {
         return (root, query, cb) -> {
-            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            List<Predicate> predicates = new ArrayList<>();
             if (user.getRole() != Role.ADMIN) {
                 List<UUID> accessibleHostIds = permissionRepository.findByUserId(user.getId()).stream()
                         .map(UserHostPermission::getHostId).collect(Collectors.toList());
@@ -500,7 +504,7 @@ public class DeploymentService {
                     cb.like(cb.lower(root.get("id").as(String.class)), pattern)
                 ));
             }
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
@@ -516,7 +520,7 @@ public class DeploymentService {
     }
 
     private String replaceVariables(String command, Host host) {
-        return fr.arthurbr02.deploymanager.util.ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
+        return ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
     }
 
     private String readLogFile(String path) {
