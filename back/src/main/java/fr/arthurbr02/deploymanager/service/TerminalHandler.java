@@ -139,9 +139,23 @@ public class TerminalHandler extends TextWebSocketHandler {
                 }
             });
 
+        } catch (com.jcraft.jsch.JSchException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("Auth fail") || msg.contains("USERAUTH fail")) {
+                log.error("SSH auth failed for terminal (no valid key configured)", e);
+                wsSession.sendMessage(new TextMessage(
+                    "\r\n[ERREUR] Authentification SSH échouée.\r\n" +
+                    "Aucune clé SSH valide n'est configurée.\r\n" +
+                    "Un administrateur doit renseigner le chemin de la clé SSH dans Paramètres > Clé SSH.\r\n"
+                ));
+            } else {
+                log.error("Failed to connect SSH for terminal", e);
+                wsSession.sendMessage(new TextMessage("\r\n[ERREUR] Impossible de se connecter en SSH : " + msg + "\r\n"));
+            }
+            wsSession.close(CloseStatus.SERVER_ERROR);
         } catch (Exception e) {
             log.error("Failed to connect SSH for terminal", e);
-            wsSession.sendMessage(new TextMessage("\r\n[ERROR] Impossible de se connecter en SSH : " + e.getMessage() + "\r\n"));
+            wsSession.sendMessage(new TextMessage("\r\n[ERREUR] Impossible de se connecter en SSH : " + e.getMessage() + "\r\n"));
             wsSession.close(CloseStatus.SERVER_ERROR);
         }
     }
