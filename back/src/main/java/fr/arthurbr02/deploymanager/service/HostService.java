@@ -187,10 +187,8 @@ public class HostService {
                 }
                 ProcessBuilder pb;
                 if (!"windows".equalsIgnoreCase(serverOs) && !finalCommand.matches("^ssh(\\s+.*|$)")) {
-                    // Non-SSH command on Linux: force line-buffering via stdbuf and env vars
-                    pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, finalCommand);
-                    pb.environment().put("PYTHONUNBUFFERED", "1");
-                    pb.environment().put("JAVA_TOOL_OPTIONS", "-Dfile.encoding=UTF-8");
+                    // Non-SSH command on Linux: force line-buffering via unbuffer
+                    pb = new ProcessBuilder("unbuffer", shellBin, shellArg, finalCommand);
                 } else {
                     pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
                 }
@@ -211,11 +209,12 @@ public class HostService {
                     finalProcess.destroyForcibly();
                 });
 
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
+                try (InputStreamReader reader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8)) {
+                    char[] buffer = new char[1024];
+                    int read;
+                    while ((read = reader.read(buffer)) != -1) {
                         try {
-                            emitter.send(SseEmitter.event().name("log").data(line + "\n"));
+                            emitter.send(SseEmitter.event().name("log").data(new String(buffer, 0, read)));
                         } catch (IOException clientGone) {
                             log.debug("[Tlog] Client disconnected for host {}, stopping stream", hostId);
                             return;

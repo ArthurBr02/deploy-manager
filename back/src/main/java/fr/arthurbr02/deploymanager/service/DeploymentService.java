@@ -131,25 +131,23 @@ public class DeploymentService {
             if ("windows".equalsIgnoreCase(serverOs)) {
                 pb = new ProcessBuilder(shellBin, shellArg, command);
             } else {
-                // Use stdbuf for native binaries and environment variables for Java/Python
-                pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, command);
-                pb.environment().put("PYTHONUNBUFFERED", "1");
-                pb.environment().put("JAVA_TOOL_OPTIONS", "-Dfile.encoding=UTF-8");
+                pb = new ProcessBuilder("unbuffer", shellBin, shellArg, command);
             }
             pb.redirectErrorStream(true);
             Process process = pb.start();
             runningProcesses.put(deploymentId, process);
 
-            // Read stdout in a separate thread so we can enforce timeout independently
+            // Read stdout in a separate thread chunk by chunk (not line by line)
             CompletableFuture<Void> stdoutReader = CompletableFuture.runAsync(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                try (InputStreamReader reader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8);
                      BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        String logLine = line + "\n";
-                        writer.write(logLine);
+                    char[] buffer = new char[1024];
+                    int read;
+                    while ((read = reader.read(buffer)) != -1) {
+                        String chunk = new String(buffer, 0, read);
+                        writer.write(chunk);
                         writer.flush();
-                        broadcastLog(deploymentId, logLine);
+                        broadcastLog(deploymentId, chunk);
                     }
                 } catch (IOException ignored) {}
             });

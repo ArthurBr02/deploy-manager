@@ -63,7 +63,7 @@ public class DeploymentController {
     @Operation(summary = "Stream SSE des logs d'un déploiement (nécessite un token SSE)")
     public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
-        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
         User user = authService.validateSseToken(token);
         return deploymentService.streamLogs(id, user);
     }
@@ -72,7 +72,7 @@ public class DeploymentController {
     @Operation(summary = "Stream SSE des changements de statut de déploiement (nécessite un token SSE)")
     public SseEmitter subscribeEvents(@RequestParam String token, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
-        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
         User user = authService.validateSseToken(token);
         return deploymentService.subscribeEvents(user);
     }
