@@ -143,9 +143,62 @@
             <DeploymentTable :deployments="deploymentHistory" :loading="histLoading" :hide-host="true" @view="viewDeployment" />
           </div>
 
-          <!-- Details (edit) -->
-          <div v-if="activeTab === 'details' && host.canEdit">
-            <HostEditForm :host="host" @saved="loadHost" />
+          <!-- Details (read-only) -->
+          <div v-if="activeTab === 'details'">
+            <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+              <h3 class="font-semibold text-gray-900">Détails de l'hôte</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                  <div class="w-full border border-warm-border rounded-md px-3 py-2 text-sm bg-warm-muted text-gray-800">{{ host.name || '—' }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">IP</label>
+                  <div class="w-full border border-warm-border rounded-md px-3 py-2 text-sm bg-warm-muted font-mono text-gray-800">{{ host.ip || '—' }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Domaine</label>
+                  <div class="w-full border border-warm-border rounded-md px-3 py-2 text-sm bg-warm-muted font-mono text-gray-800">{{ host.domain || '—' }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Timeout par défaut (min)</label>
+                  <div class="w-full border border-warm-border rounded-md px-3 py-2 text-sm bg-warm-muted text-gray-800">{{ host.defaultTimeout != null ? host.defaultTimeout + ' min' : 'Défaut' }}</div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Commande de déploiement</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800 whitespace-pre-wrap min-h-[3rem]">{{ host.deploymentCommand || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Commande de génération</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800 whitespace-pre-wrap min-h-[3rem]">{{ host.generateCommand || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Commande de livraison</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800 whitespace-pre-wrap min-h-[3rem]">{{ host.deliverCommand || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Commande Tlog</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800 whitespace-pre-wrap min-h-[3rem]">{{ host.tlogCommand || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Commande de Rollback</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800 whitespace-pre-wrap min-h-[3rem]">{{ host.rollbackCommand || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">URL Healthcheck</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800">{{ host.healthcheckUrl || '—' }}</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Dossier de dumps SQL</label>
+                <div class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono bg-warm-muted text-gray-800">{{ host.dumpFolder || '—' }}</div>
+              </div>
+              <div v-if="host.canEdit" class="flex justify-end">
+                <RouterLink :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-md text-sm hover:bg-accent-hover">
+                  <EditIcon class="w-3.5 h-3.5" /> Modifier
+                </RouterLink>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -171,11 +224,10 @@ import UserBadge from '@/components/UserBadge.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
-import HostEditForm from '@/components/HostEditForm.vue'
 import { RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon, DatabaseIcon, DownloadIcon } from '@/components/icons'
 
 export default {
-  components: { StatusBadge, TypeBadge, UserBadge, DeployModal, DeploymentLogsModal, DeploymentTable, HostEditForm, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon, DatabaseIcon, DownloadIcon },
+  components: { StatusBadge, TypeBadge, UserBadge, DeployModal, DeploymentLogsModal, DeploymentTable, RocketIcon, PackageIcon, TruckIcon, TerminalIcon, EditIcon, RefreshIcon, DatabaseIcon, DownloadIcon },
   computed: {
     ...mapStores(useToastStore),
     ...mapState(useAuthStore, ['accessToken']),

@@ -34,6 +34,7 @@ public class AuthService {
     @Value("${app.security.cookie-secure}")
     private boolean cookieSecure;
 
+    @Transactional(readOnly = true)
     public User validateSseToken(String token) {
         // 1. Try as JWT SSE token or Access Token
         try {
