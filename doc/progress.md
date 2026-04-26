@@ -118,6 +118,14 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Gestion des dumps SQL (Backend & UI)
 - [x] Système de demande de dump par e-mail
 
+## Phase 12 : Streaming SSE
+
+### Sprint 20 : Correction du buffering pipe pour les logs en temps réel
+- [x] Analyse : Identification du buffering pipe Unix comme cause racine (processus écrivant dans un pipe et non un TTY)
+- [x] Backend : Ajout du wrapper `stdbuf -oL -eL` dans `DeploymentService` pour forcer le line-buffering des commandes de déploiement sur Linux
+- [x] Backend : Ajout du wrapper `stdbuf -oL -eL` dans `HostService` pour les commandes tlog non-SSH sur Linux (SSH garde son PTY via `-t -t`)
+- [x] Backend : Ajout de `response.flushBuffer()` dans `DeploymentController` et `HostController` pour forcer le flush des headers Tomcat avant le stream SSE
+
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit avec `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).

@@ -127,7 +127,7 @@ public class DeploymentService {
                 shellBin = configService.get("shell_linux_bin", "/bin/sh");
                 shellArg = configService.get("shell_linux_arg", "-c");
             }
-            ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, command);
+            ProcessBuilder pb = buildProcessBuilder(shellBin, shellArg, command, serverOs);
             pb.redirectErrorStream(true);
             Process process = pb.start();
             runningProcesses.put(deploymentId, process);
@@ -522,6 +522,15 @@ public class DeploymentService {
 
     private String replaceVariables(String command, Host host) {
         return ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
+    }
+
+    private ProcessBuilder buildProcessBuilder(String shellBin, String shellArg, String command, String serverOs) {
+        if (!"windows".equalsIgnoreCase(serverOs)) {
+            // stdbuf forces line-buffering via LD_PRELOAD, which is inherited by all child processes
+            // using libc stdio — prevents output from accumulating in the OS pipe until process exit
+            return new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, command);
+        }
+        return new ProcessBuilder(shellBin, shellArg, command);
     }
 
     private String readLogFile(String path) {

@@ -185,7 +185,14 @@ public class HostService {
                 if (finalCommand.matches("^ssh(\\s+.*|$)") && !finalCommand.contains(" -t")) {
                     finalCommand = "ssh -t -t" + finalCommand.substring(3);
                 }
-                ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
+                ProcessBuilder pb;
+                if (!"windows".equalsIgnoreCase(serverOs) && !finalCommand.matches("^ssh(\\s+.*|$)")) {
+                    // Non-SSH command on Linux: force line-buffering via stdbuf
+                    // SSH commands already get PTY via -t -t flag injected above
+                    pb = new ProcessBuilder("stdbuf", "-oL", "-eL", shellBin, shellArg, finalCommand);
+                } else {
+                    pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
+                }
                 pb.redirectErrorStream(true);
                 process = pb.start();
                 final Process finalProcess = process;

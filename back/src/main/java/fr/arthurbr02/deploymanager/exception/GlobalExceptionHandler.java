@@ -26,7 +26,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException e) {
-        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        return ResponseEntity.badRequest().body(Map.of("error", message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
