@@ -62,6 +62,8 @@ public class DeploymentController {
     @GetMapping(value = "/{id}/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs d'un déploiement (nécessite un token SSE)")
     public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         User user = authService.validateSseToken(token);
         return deploymentService.streamLogs(id, user);
     }
@@ -69,6 +71,8 @@ public class DeploymentController {
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des changements de statut de déploiement (nécessite un token SSE)")
     public SseEmitter subscribeEvents(@RequestParam String token, HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         User user = authService.validateSseToken(token);
         return deploymentService.subscribeEvents(user);
     }
