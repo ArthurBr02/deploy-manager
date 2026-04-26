@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.*;
 
@@ -31,7 +32,9 @@ public class HostController {
 
     @GetMapping(value = "/hosts/{id}/tlog", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs applicatifs (tlog) (nécessite un token SSE)")
-    public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token) {
+    public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         User user = authService.validateSseToken(token);
         return hostService.streamTlog(id, user);
     }

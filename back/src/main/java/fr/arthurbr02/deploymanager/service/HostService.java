@@ -178,10 +178,13 @@ public class HostService {
                     shellArg = configService.get("shell_linux_arg", "-c");
                 }
 
-                // On Linux, wrap with stdbuf to force line-buffered output (fixes SSH buffering with tail -f)
-                String finalCommand = "linux".equalsIgnoreCase(serverOs)
-                        ? "stdbuf -oL " + resolved
-                        : resolved;
+                // For SSH commands, inject -t -t to allocate a remote PTY.
+                // SSH uses write() syscalls (not stdio), so stdbuf has no effect.
+                // With a PTY, SSH's main loop does immediate write() per chunk, no buffering.
+                String finalCommand = resolved;
+                if (finalCommand.matches("^ssh(\\s+.*|$)") && !finalCommand.contains(" -t")) {
+                    finalCommand = "ssh -t -t" + finalCommand.substring(3);
+                }
                 ProcessBuilder pb = new ProcessBuilder(shellBin, shellArg, finalCommand);
                 pb.redirectErrorStream(true);
                 process = pb.start();
@@ -221,7 +224,7 @@ public class HostService {
             } catch (Exception e) {
                 log.error("Tlog error for host {}", hostId, e);
                 try {
-                    emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                    emitter.send(SseEmitter.event().name("appError").data(e.getMessage()));
                     emitter.completeWithError(e);
                 } catch (Exception ignored) {}
                 if (process != null) process.destroyForcibly();

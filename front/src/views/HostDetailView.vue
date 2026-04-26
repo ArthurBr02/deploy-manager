@@ -300,9 +300,10 @@ export default {
     startTlog() {
       if (this._tlogSse) this._tlogSse.close()
       this.tlogActive = true
+      this._tlogEnded = false
       const url = hostsService.getTlogStreamUrl(this.$route.params.id, this.accessToken)
       const src = new EventSource(url)
-      
+
       src.addEventListener('log', e => {
         this.tlogLines.push(e.data)
         if (this.tlogLines.length > 500) this.tlogLines.shift()
@@ -311,22 +312,26 @@ export default {
         })
       })
 
+      // Fin propre du flux (processus terminé côté serveur)
       src.addEventListener('end', () => {
+        this._tlogEnded = true
         src.close()
         this._tlogSse = null
         this.tlogActive = false
       })
 
-      src.addEventListener('error', e => {
-        const msg = e.data || 'Erreur inconnue'
-        this.tlogLines.push(`[ERREUR] ${msg}`)
+      // Événement SSE "error" envoyé explicitement par le serveur (distinct des erreurs réseau)
+      src.addEventListener('appError', e => {
+        this.tlogLines.push(`[ERREUR] ${e.data}`)
+        this._tlogEnded = true
         src.close()
         this._tlogSse = null
         this.tlogActive = false
       })
 
+      // Erreur réseau / connexion perdue — ne pas déclencher si le flux s'est déjà fermé proprement
       src.onerror = () => {
-        if (src.readyState === EventSource.CLOSED) return
+        if (this._tlogEnded || src.readyState === EventSource.CLOSED) return
         this.stopTlog()
         this.toastStore.error('Connexion au flux de logs perdue')
       }

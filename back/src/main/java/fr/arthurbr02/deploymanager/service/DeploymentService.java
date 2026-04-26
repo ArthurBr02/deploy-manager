@@ -435,6 +435,7 @@ public class DeploymentService {
         return String.format("%d min %02d s", s / 60, s % 60);
     }
 
+    @Transactional(readOnly = true)
     public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, UUID userId, String search, String status, String type, String period, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Specification<Deployment> spec = buildSpec(currentUser, hostId, userId, search, status, type, period);
