@@ -19,7 +19,7 @@
         </button>
       </div>
 
-      <div class="dm-term flex-1 overflow-auto min-h-0" ref="logEl" style="min-height: 200px; max-height: 60vh;">{{ logContent || '(aucun log)' }}</div>
+      <div class="dm-term flex-1 overflow-auto min-h-0" ref="logEl" style="min-height: 200px; max-height: 60vh;" v-html="formattedLogs || '(aucun log)'"></div>
     </div>
   </div>
 </template>
@@ -32,6 +32,7 @@ import TypeBadge from '@/components/TypeBadge.vue'
 import UserBadge from '@/components/UserBadge.vue'
 import { XIcon } from '@/components/icons'
 import axios from '@/api/axios'
+import { formatAnsi } from '@/utils/ansi'
 
 export default {
   components: { StatusBadge, TypeBadge, UserBadge, XIcon },
@@ -41,6 +42,9 @@ export default {
   emits: ['close'],
   computed: {
     ...mapState(useAuthStore, ['accessToken']),
+    formattedLogs() {
+      return formatAnsi(this.logContent)
+    }
   },
   data() {
     return {

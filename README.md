@@ -182,8 +182,9 @@ WantedBy=multi-user.target
 ```
 
 Activez et démarrez le service : `sudo systemctl daemon-reload && sudo systemctl enable --now deploy-manager`
-
 ### 6. Configuration Nginx (Reverse Proxy)
+
+Pour que les logs s'affichent en temps réel (SSE), il est impératif de désactiver le buffering de Nginx.
 
 Exemple de configuration `/etc/nginx/sites-available/deploy-manager` :
 
@@ -204,6 +205,12 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+
+        # Désactivation du buffering pour SSE (Logs en temps réel)
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_set_header X-Accel-Buffering no;
     }
 
     location /api/ws {
@@ -211,9 +218,24 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
     }
 }
 ```
+
+---
+
+## Notes sur les logs en temps réel (Streaming SSE)
+
+Deploy Manager utilise une combinaison de techniques pour garantir que les logs s'affichent instantanément, même derrière plusieurs proxys (ex: Nginx Proxy Manager) :
+
+1. **Simulation de TTY** : L'utilitaire `unbuffer` (paquet `expect`) est utilisé pour forcer les programmes comme `mvn` et `git` à désactiver leur propre mise en mémoire tampon.
+2. **Lecture brute (Raw Chunks)** : Le backend lit les sorties stdout/stderr caractère par caractère plutôt que ligne par ligne.
+3. **Padding de sécurité** : Un padding de 4 Ko est envoyé à l'ouverture de chaque flux SSE pour forcer les proxys récalcitrants à vider leur tampon de sortie immédiatement.
+4. **En-têtes anti-buffering** : Les en-têtes `X-Accel-Buffering: no` et `Cache-Control: no-transform` sont envoyés par l'API pour empêcher Nginx de compresser (Gzip) ou de retarder le flux.
+
+**Dépannage** : Si les logs arrivent toujours d'un seul coup à la fin, vérifiez que la compression Gzip est désactivée pour le domaine dans votre Proxy Manager et que le paquet `expect` est bien installé sur le serveur.
+
 
 ---
 

@@ -121,10 +121,12 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 ## Phase 12 : Streaming SSE
 
 ### Sprint 20 : Correction du buffering pipe pour les logs en temps réel
-- [x] Analyse : Identification du buffering pipe Unix comme cause racine (processus écrivant dans un pipe et non un TTY)
-- [x] Backend : Ajout du wrapper `stdbuf -oL -eL` dans `DeploymentService` pour forcer le line-buffering des commandes de déploiement sur Linux
-- [x] Backend : Ajout du wrapper `stdbuf -oL -eL` dans `HostService` pour les commandes tlog non-SSH sur Linux (SSH garde son PTY via `-t -t`)
-- [x] Backend : Ajout de `response.flushBuffer()` dans `DeploymentController` et `HostController` pour forcer le flush des headers Tomcat avant le stream SSE
+- [x] Analyse : Identification du buffering pipe Unix et du buffering Proxy Nginx (Gzip) comme causes racines.
+- [x] Backend : Remplacement de la lecture par ligne (`readLine`) par une lecture brute par blocs (`InputStreamReader.read`) pour un streaming caractère par caractère.
+- [x] Backend : Utilisation de `unbuffer` (paquet `expect`) pour simuler un TTY et forcer Maven/Git à flusher.
+- [x] Backend : Ajout d'un padding de sécurité de 4 Ko à l'ouverture du flux SSE pour forcer le flush des tampons Nginx.
+- [x] Backend : Ajout des en-têtes `X-Accel-Buffering: no` et `Cache-Control: no-transform` pour bloquer le buffering et la compression Gzip des proxys.
+- [x] Documentation : Mise à jour du README avec les prérequis (`expect`) et la configuration Nginx optimale.
 
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.

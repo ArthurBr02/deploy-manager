@@ -98,7 +98,7 @@
                     <StatusBadge v-if="displayDeployment?.status" :status="displayDeployment.status" />
                   </div>
                 </div>
-                <div class="dm-term h-[300px] sm:h-[400px] overflow-auto text-[11px]" ref="logEl">{{ logContent }}</div>
+                <div class="dm-term h-[300px] sm:h-[400px] overflow-auto text-[11px]" ref="logEl" v-html="formattedLogContent"></div>
               </div>
             </div>
 
@@ -118,7 +118,7 @@
 
               <div class="bg-[#1a1a1a] border border-black rounded-xl overflow-hidden shadow-lg flex flex-col h-[300px] sm:h-[450px]">
                 <div class="flex-1 p-3 overflow-auto font-mono text-[10px] leading-relaxed selection:bg-accent/30" ref="tlogEl">
-                  <div v-for="(line, i) in tlogLines" :key="i" class="text-gray-300 border-l border-white/5 pl-2 mb-0.5 whitespace-pre-wrap break-all hover:bg-white/5">{{ line }}</div>
+                  <div v-for="(line, i) in tlogLines" :key="i" class="text-gray-300 border-l border-white/5 pl-2 mb-0.5 whitespace-pre-wrap break-all hover:bg-white/5" v-html="formatAnsi(line)"></div>
                   
                   <div v-if="!tlogActive && !tlogLines.length" class="h-full flex flex-col items-center justify-center text-gray-500 italic text-center p-6">
                     <RefreshIcon class="w-8 h-8 mb-3 opacity-20 text-accent animate-pulse" />
@@ -218,6 +218,7 @@ import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
 import deploymentsService from '@/services/deploymentsService'
 import adminSettingsService from '@/services/adminSettingsService'
+import { formatAnsi } from '@/utils/ansi'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import UserBadge from '@/components/UserBadge.vue'
@@ -237,6 +238,9 @@ export default {
       }
       return this.viewedDeployment
     },
+    formattedLogContent() {
+      return formatAnsi(this.logContent)
+    }
   },
   data() {
     return {
@@ -297,6 +301,9 @@ export default {
     if (this._tlogSse) this._tlogSse.close()
   },
   methods: {
+    formatAnsi(text) {
+      return formatAnsi(text)
+    },
     startTlog() {
       if (this._tlogSse) this._tlogSse.close()
       this.tlogActive = true
