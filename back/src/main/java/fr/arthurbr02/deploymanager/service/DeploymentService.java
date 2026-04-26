@@ -23,7 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.criteria.JoinType;
-import Predicate;
+import jakarta.persistence.criteria.Predicate;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
