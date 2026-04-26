@@ -300,6 +300,11 @@ public class DeploymentService {
         }
         Deployment d = opt.get();
 
+        // Send 4KB padding to force Nginx/Proxies to flush their buffer immediately
+        try {
+            emitter.send(SseEmitter.event().name("padding").data(" ".repeat(4096)));
+        } catch (IOException ignored) {}
+
         if (d.getStatus() != DeploymentStatus.IN_PROGRESS) {
             try {
                 if (d.getLogs() != null) {
