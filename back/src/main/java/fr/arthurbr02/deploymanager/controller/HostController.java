@@ -19,7 +19,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.IOException;
 import java.util.*;
 
 @RestController
@@ -36,7 +35,6 @@ public class HostController {
     public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        try { response.flushBuffer(); } catch (IOException ignored) {}
         User user = authService.validateSseToken(token);
         return hostService.streamTlog(id, user);
     }

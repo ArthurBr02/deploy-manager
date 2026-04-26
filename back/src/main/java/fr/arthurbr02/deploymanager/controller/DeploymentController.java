@@ -23,7 +23,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -64,7 +63,6 @@ public class DeploymentController {
     public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        try { response.flushBuffer(); } catch (IOException ignored) {}
         User user = authService.validateSseToken(token);
         return deploymentService.streamLogs(id, user);
     }
@@ -74,7 +72,6 @@ public class DeploymentController {
     public SseEmitter subscribeEvents(@RequestParam String token, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        try { response.flushBuffer(); } catch (IOException ignored) {}
         User user = authService.validateSseToken(token);
         return deploymentService.subscribeEvents(user);
     }
