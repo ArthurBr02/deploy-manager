@@ -23,6 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -61,18 +62,24 @@ public class DeploymentController {
     @GetMapping(value = "/{id}/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs d'un déploiement (nécessite un token SSE)")
     public SseEmitter streamLogs(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
+        User user = authService.validateSseToken(token);
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        User user = authService.validateSseToken(token);
+        try {
+            response.flushBuffer();
+        } catch (IOException ignored) {}
         return deploymentService.streamLogs(id, user);
     }
 
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des changements de statut de déploiement (nécessite un token SSE)")
     public SseEmitter subscribeEvents(@RequestParam String token, HttpServletResponse response) {
+        User user = authService.validateSseToken(token);
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        User user = authService.validateSseToken(token);
+        try {
+            response.flushBuffer();
+        } catch (IOException ignored) {}
         return deploymentService.subscribeEvents(user);
     }
 

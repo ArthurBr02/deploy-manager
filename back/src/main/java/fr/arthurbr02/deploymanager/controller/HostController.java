@@ -19,6 +19,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.util.*;
 
 @RestController
@@ -33,9 +34,12 @@ public class HostController {
     @GetMapping(value = "/hosts/{id}/tlog", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream SSE des logs applicatifs (tlog) (nécessite un token SSE)")
     public SseEmitter streamTlog(@PathVariable UUID id, @RequestParam String token, HttpServletResponse response) {
+        User user = authService.validateSseToken(token);
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
-        User user = authService.validateSseToken(token);
+        try {
+            response.flushBuffer();
+        } catch (IOException ignored) {}
         return hostService.streamTlog(id, user);
     }
 
