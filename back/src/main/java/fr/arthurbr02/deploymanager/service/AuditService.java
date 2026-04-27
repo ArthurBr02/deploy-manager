@@ -13,10 +13,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import fr.arthurbr02.deploymanager.dto.audit.AuditLogResponse;
 import fr.arthurbr02.deploymanager.repository.UserRepository;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +67,21 @@ public class AuditService {
 
     public Page<AuditLogResponse> findByUserId(UUID userId, int page, int size) {
         return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size)).map(this::toResponse);
+    }
+
+    @Transactional
+    public void logPermissionsChange(UUID actorId, UUID targetUserId, Object before, Object after) {
+        Instant windowStart = Instant.now().minusSeconds(60);
+        auditLogRepository.findTopByEntityNameAndEntityIdAndUserIdAndCreatedAtAfterOrderByCreatedAtDesc(
+                AuditConstants.ENTITY_USER_HOST_PERMISSION, targetUserId, actorId, windowStart)
+                .ifPresentOrElse(
+                        existing -> {
+                            existing.setNewValue(serialize(after));
+                            auditLogRepository.save(existing);
+                        },
+                        () -> logAs(actorId, AuditConstants.ENTITY_USER_HOST_PERMISSION,
+                                targetUserId, AuditConstants.ACTION_UPDATE, before, after)
+                );
     }
 
     public AuditLogResponse findById(UUID id) {

@@ -21,7 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -43,7 +43,8 @@ public class HostService {
         }
     }
 
-    record PermAuditSnapshot(UUID userId, UUID hostId, boolean canDeploy, boolean canEdit, boolean canExecute) {}
+    record PermEntry(UUID hostId, String hostName, boolean canDeploy, boolean canEdit, boolean canExecute) {}
+    record AllPermsSnapshot(UUID userId, List<PermEntry> permissions) {}
 
     private final HostRepository hostRepository;
     private final UserRepository userRepository;
@@ -68,7 +69,7 @@ public class HostService {
         return hosts.stream().map(h -> {
             Deployment last = deploymentRepository.findLastByHostId(h.getId()).orElse(null);
             String lastStatus = null;
-            LocalDateTime lastAt = null;
+            Instant lastAt = null;
             if (last != null) {
                 lastStatus = last.getStatus().name();
                 lastAt = last.getCreatedAt();
@@ -92,7 +93,7 @@ public class HostService {
 
         Deployment last = deploymentRepository.findLastByHostId(id).orElse(null);
         String lastStatus = last != null ? last.getStatus().name() : null;
-        LocalDateTime lastAt = last != null ? last.getCreatedAt() : null;
+        Instant lastAt = last != null ? last.getCreatedAt() : null;
 
         boolean canDeploy = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDeploy());
         boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
@@ -267,7 +268,7 @@ public class HostService {
         Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
         HostAuditSnapshot snapshot = HostAuditSnapshot.of(host);
-        host.setDeletedAt(LocalDateTime.now());
+        host.setDeletedAt(Instant.now());
         host.setDeletedBy(currentUser.getId());
         hostRepository.save(host);
         auditService.log(AuditConstants.ENTITY_HOST, id, AuditConstants.ACTION_DELETE, snapshot, null);
@@ -275,22 +276,41 @@ public class HostService {
 
     @Transactional
     public void setPermission(UUID userId, PermissionRequest req) {
+        AllPermsSnapshot before = buildAllPermsSnapshot(userId);
+
         UserHostPermission perm = permissionRepository.findByUserIdAndHostId(userId, req.hostId())
                 .orElse(UserHostPermission.builder().userId(userId).hostId(req.hostId()).build());
-        PermAuditSnapshot before = new PermAuditSnapshot(userId, req.hostId(), perm.isCanDeploy(), perm.isCanEdit(), perm.isCanExecute());
         perm.setCanDeploy(req.canDeploy());
         perm.setCanEdit(req.canEdit());
         perm.setCanExecute(req.canExecute());
         if (!req.canDeploy() && !req.canEdit() && !req.canExecute()) {
             permissionRepository.deleteByUserIdAndHostId(userId, req.hostId());
-            auditService.log(AuditConstants.ENTITY_USER_HOST_PERMISSION, req.hostId(), AuditConstants.ACTION_DELETE, before, null);
         } else {
             permissionRepository.save(perm);
-            PermAuditSnapshot after = new PermAuditSnapshot(userId, req.hostId(), perm.isCanDeploy(), perm.isCanEdit(), perm.isCanExecute());
-            auditService.log(AuditConstants.ENTITY_USER_HOST_PERMISSION, req.hostId(), AuditConstants.ACTION_UPDATE, before, after);
         }
+
+        AllPermsSnapshot after = buildAllPermsSnapshot(userId);
+        UUID actorId = currentActorId();
+        auditService.logPermissionsChange(actorId, userId, before, after);
     }
 
+    private AllPermsSnapshot buildAllPermsSnapshot(UUID userId) {
+        List<PermEntry> entries = permissionRepository.findByUserId(userId).stream()
+                .map(p -> new PermEntry(p.getHostId(),
+                        p.getHost() != null ? p.getHost().getName() : null,
+                        p.isCanDeploy(), p.isCanEdit(), p.isCanExecute()))
+                .collect(Collectors.toList());
+        return new AllPermsSnapshot(userId, entries);
+    }
+
+    private UUID currentActorId() {
+        Object principal = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getPrincipal();
+        if (principal instanceof fr.arthurbr02.deploymanager.entity.User u) return u.getId();
+        return null;
+    }
+
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getPermissionsForUser(UUID userId) {
         return permissionRepository.findByUserId(userId).stream().map(p -> {
             Map<String, Object> m = new LinkedHashMap<>();

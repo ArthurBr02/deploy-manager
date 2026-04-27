@@ -18,7 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -98,7 +99,7 @@ public class AuthService {
             resetTokenRepository.save(PasswordResetToken.builder()
                     .userId(user.getId())
                     .token(token)
-                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .expiresAt(Instant.now().plus(1, ChronoUnit.HOURS))
                     .used(false)
                     .build());
             // TODO: send email with reset link
@@ -109,7 +110,7 @@ public class AuthService {
     public void resetPassword(ResetPasswordRequest req) {
         PasswordResetToken prt = resetTokenRepository.findByTokenAndUsedFalse(req.token())
                 .orElseThrow(() -> new RuntimeException("Token invalide ou expiré"));
-        if (prt.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
             throw new RuntimeException("Token expiré");
         }
         User user = userRepository.findByIdAndDeletedAtIsNull(prt.getUserId())

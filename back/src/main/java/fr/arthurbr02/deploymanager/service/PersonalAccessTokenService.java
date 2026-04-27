@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,7 @@ public class PersonalAccessTokenService {
     private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder().withoutPadding();
 
     @Transactional
-    public Map.Entry<String, PersonalAccessToken> createToken(User user, String name, LocalDateTime expiresAt) {
+    public Map.Entry<String, PersonalAccessToken> createToken(User user, String name, Instant expiresAt) {
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
         String plainToken = base64Encoder.encodeToString(randomBytes);
@@ -61,11 +61,11 @@ public class PersonalAccessTokenService {
         // Improvement: Store a prefix or use a specific format to avoid full table scan.
         // For now, we fetch all active tokens and check.
         return repository.findAll().stream()
-                .filter(token -> token.getExpiresAt() == null || token.getExpiresAt().isAfter(LocalDateTime.now()))
+                .filter(token -> token.getExpiresAt() == null || token.getExpiresAt().isAfter(Instant.now()))
                 .filter(token -> passwordEncoder.matches(tokenValue, token.getToken()))
                 .findFirst()
                 .map(token -> {
-                    token.setLastUsedAt(LocalDateTime.now());
+                    token.setLastUsedAt(Instant.now());
                     repository.save(token);
                     return token.getUser();
                 });

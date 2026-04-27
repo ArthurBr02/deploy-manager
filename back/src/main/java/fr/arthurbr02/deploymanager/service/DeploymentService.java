@@ -33,7 +33,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -192,7 +192,7 @@ public class DeploymentService {
         deploymentRepository.findById(deploymentId).ifPresent(d -> {
             if (d.getStatus() == DeploymentStatus.IN_PROGRESS) {
                 d.setStatus(status);
-                d.setFinishedAt(LocalDateTime.now());
+                d.setFinishedAt(Instant.now());
                 d.setLogs(readLogFile(logFile));
                 deploymentRepository.save(d);
                 broadcastStatusEvent(d.getHostId(), deploymentId, status);
@@ -371,7 +371,7 @@ public class DeploymentService {
     public void cleanupOrphanedDeployments() {
         List<Deployment> inProgress = deploymentRepository.findByStatus(DeploymentStatus.IN_PROGRESS);
         if (inProgress.isEmpty()) return;
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         for (Deployment d : inProgress) {
             log.warn("[Boot] Orphaned deployment {} on host {} marked as FAILURE", d.getId(), d.getHostId());
             d.setStatus(DeploymentStatus.FAILURE);
@@ -384,7 +384,7 @@ public class DeploymentService {
 
     @Transactional(readOnly = true)
     public DeploymentStatsResponse getStats(String period, UUID hostId, String type, User user) {
-        LocalDateTime since = parsePeriod(period);
+        Instant since = parsePeriod(period);
         DeploymentType deploymentType = parseType(type);
 
         List<UUID> accessibleHostIds = null;
@@ -414,7 +414,7 @@ public class DeploymentService {
         return new DeploymentStatsResponse(total, success, failure, inProgress, medianDuration);
     }
 
-    private Specification<Deployment> statsSpec(LocalDateTime since, UUID hostId, DeploymentType type, DeploymentStatus status, List<UUID> accessibleHostIds) {
+    private Specification<Deployment> statsSpec(Instant since, UUID hostId, DeploymentType type, DeploymentStatus status, List<UUID> accessibleHostIds) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
@@ -426,11 +426,11 @@ public class DeploymentService {
         };
     }
 
-    private LocalDateTime parsePeriod(String period) {
+    private Instant parsePeriod(String period) {
         return switch (period == null ? "" : period) {
-            case "24h" -> LocalDateTime.now().minusHours(24);
-            case "7d"  -> LocalDateTime.now().minusDays(7);
-            case "30d" -> LocalDateTime.now().minusDays(30);
+            case "24h" -> Instant.now().minus(Duration.ofHours(24));
+            case "7d"  -> Instant.now().minus(Duration.ofDays(7));
+            case "30d" -> Instant.now().minus(Duration.ofDays(30));
             default    -> null;
         };
     }
@@ -498,7 +498,7 @@ public class DeploymentService {
                         .map(UserHostPermission::getHostId).collect(Collectors.toList());
                 predicates.add(root.get("hostId").in(accessibleHostIds));
             }
-            LocalDateTime since = parsePeriod(period);
+            Instant since = parsePeriod(period);
             if (since != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), since));
             if (hostId != null) predicates.add(cb.equal(root.get("hostId"), hostId));
             if (userId != null) predicates.add(cb.equal(root.get("userId"), userId));

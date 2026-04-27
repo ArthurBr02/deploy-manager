@@ -58,19 +58,23 @@
             <input v-model="settings.default_timeout" type="number" min="0" class="w-full sm:w-40 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
             <span class="text-xs text-gray-400 sm:ml-2">0 = désactivé</span>
           </div>
-          <div class="flex items-center gap-3 pt-2">
-            <input type="checkbox" v-model="settings.mcp_enabled" :true-value="'true'" :false-value="'false'" id="mcp-enabled"
-              class="w-4 h-4 text-accent border-warm-border rounded focus:ring-accent" />
-            <label for="mcp-enabled" class="text-sm font-medium text-gray-700">Activer le protocole MCP (Model Context Protocol)</label>
+          <div class="flex items-center gap-3 pt-2 group cursor-pointer" @click="settings.mcp_enabled = settings.mcp_enabled === 'true' ? 'false' : 'true'">
+            <div class="relative flex items-center justify-center w-5 h-5 border-2 rounded transition-all duration-200"
+              :class="settings.mcp_enabled === 'true' ? 'bg-accent border-accent shadow-sm shadow-accent/20' : 'bg-white border-warm-border group-hover:border-warm-border-strong'">
+              <CheckIcon v-if="settings.mcp_enabled === 'true'" class="w-3.5 h-3.5 text-white stroke-[3]" />
+            </div>
+            <label class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Activer le protocole MCP (Model Context Protocol)</label>
           </div>
           <div class="border-t border-warm-border/60 pt-4 space-y-3">
-            <h3 class="text-sm font-semibold text-gray-700">Audit</h3>
-            <div class="flex items-start gap-3">
-              <input type="checkbox" v-model="settings.audit_terminal_commands" :true-value="'true'" :false-value="'false'" id="audit-terminal"
-                class="w-4 h-4 mt-0.5 text-accent border-warm-border rounded focus:ring-accent" />
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Audit</h3>
+            <div class="flex items-start gap-3 group cursor-pointer" @click="settings.audit_terminal_commands = settings.audit_terminal_commands === 'true' ? 'false' : 'true'">
+              <div class="relative flex items-center justify-center w-5 h-5 mt-0.5 border-2 rounded transition-all duration-200 shrink-0"
+                :class="settings.audit_terminal_commands === 'true' ? 'bg-accent border-accent shadow-sm shadow-accent/20' : 'bg-white border-warm-border group-hover:border-warm-border-strong'">
+                <CheckIcon v-if="settings.audit_terminal_commands === 'true'" class="w-3.5 h-3.5 text-white stroke-[3]" />
+              </div>
               <div>
-                <label for="audit-terminal" class="text-sm font-medium text-gray-700 cursor-pointer">Logger les commandes Terminal SSH</label>
-                <p class="text-xs text-amber-600 mt-0.5">Attention : les commandes tapées dans le terminal seront enregistrées dans les logs d'audit. Les mots de passe saisis directement peuvent être capturés.</p>
+                <label class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Logger les commandes Terminal SSH</label>
+                <p class="text-[11px] font-medium text-amber-600/80 mt-1 leading-relaxed max-w-lg">Attention : les commandes tapées dans le terminal seront enregistrées dans les logs d'audit. Les mots de passe saisis directement peuvent être capturés.</p>
               </div>
             </div>
           </div>
@@ -91,10 +95,12 @@
         <!-- Notifications -->
         <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Notifications</h2>
-          <div class="flex items-center gap-3">
-            <input type="checkbox" v-model="settings.notification_enabled" :true-value="'true'" :false-value="'false'" id="notif-enabled"
-              class="w-4 h-4 text-accent border-warm-border rounded focus:ring-accent" />
-            <label for="notif-enabled" class="text-sm font-medium text-gray-700">Activer les notifications (Webhooks)</label>
+          <div class="flex items-center gap-3 group cursor-pointer" @click="settings.notification_enabled = settings.notification_enabled === 'true' ? 'false' : 'true'">
+            <div class="relative flex items-center justify-center w-5 h-5 border-2 rounded transition-all duration-200"
+              :class="settings.notification_enabled === 'true' ? 'bg-accent border-accent shadow-sm shadow-accent/20' : 'bg-white border-warm-border group-hover:border-warm-border-strong'">
+              <CheckIcon v-if="settings.notification_enabled === 'true'" class="w-3.5 h-3.5 text-white stroke-[3]" />
+            </div>
+            <label class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Activer les notifications (Webhooks)</label>
           </div>
           <div v-if="settings.notification_enabled === 'true'">
             <label class="block text-sm font-medium text-gray-700 mb-1">URL Webhook (Discord/Slack)</label>
@@ -173,10 +179,10 @@ import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
 import adminSettingsService from '@/services/adminSettingsService'
 import hostsService from '@/services/hostsService'
-import { UploadIcon } from '@/components/icons'
+import { UploadIcon, CheckIcon } from '@/components/icons'
 
 export default {
-  components: { UploadIcon },
+  components: { UploadIcon, CheckIcon },
   computed: {
     ...mapStores(useToastStore),
   },

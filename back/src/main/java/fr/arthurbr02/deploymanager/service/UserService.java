@@ -22,7 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
@@ -102,7 +102,7 @@ public class UserService {
             throw new RuntimeException("Impossible de supprimer le dernier administrateur");
         }
         UserAuditSnapshot snapshot = UserAuditSnapshot.of(user);
-        user.setDeletedAt(LocalDateTime.now());
+        user.setDeletedAt(Instant.now());
         user.setDeletedBy(currentUser.getId());
         userRepository.save(user);
         auditService.log(AuditConstants.ENTITY_USER, id, AuditConstants.ACTION_DELETE, snapshot, null);

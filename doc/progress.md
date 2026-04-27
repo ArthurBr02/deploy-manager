@@ -149,3 +149,4 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Amélioration SSH : Ajout de la configuration de l'utilisateur et du port SSH par hôte (Backend & UI).
 - [x] Documentation : Mise à jour du guide de déploiement (README) pour la configuration explicite du répertoire de logs en production.
 - [x] Backend : Activation des logs applicatifs dans un fichier (`deploy-manager.log`) via la configuration Spring Boot.
+- [x] Correction du fuseau horaire : Passage de `LocalDateTime` à `Instant` dans tout le backend pour assurer un affichage correct (UTC -> Local) dans le frontend.

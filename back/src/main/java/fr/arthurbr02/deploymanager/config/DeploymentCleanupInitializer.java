@@ -10,7 +10,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Component
@@ -32,7 +32,7 @@ public class DeploymentCleanupInitializer {
             log.info("Found {} orphaned deployments. Marking them as FAILURE.", orphaned.size());
             for (Deployment d : orphaned) {
                 d.setStatus(DeploymentStatus.FAILURE);
-                d.setFinishedAt(LocalDateTime.now());
+                d.setFinishedAt(Instant.now());
                 String currentLogs = d.getLogs() != null ? d.getLogs() : "";
                 d.setLogs(currentLogs + "\n[SYSTEM] Déploiement marqué en échec suite au redémarrage du serveur.");
             }

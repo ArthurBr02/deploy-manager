@@ -1,11 +1,11 @@
 package fr.arthurbr02.deploymanager.dto.deployment;
 import fr.arthurbr02.deploymanager.entity.Deployment;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record DeploymentResponse(UUID id, UUID hostId, String hostName, UUID userId,
                                   String userFirstName, String userLastName, String userEmail, String userAvatar,
-                                  String type, String status, String logs, Integer timeout, LocalDateTime createdAt) {
+                                  String type, String status, String logs, Integer timeout, Instant createdAt) {
     public static DeploymentResponse from(Deployment d) {
         String hostName = d.getHost() != null ? d.getHost().getName() : null;
         String firstName = d.getUser() != null ? d.getUser().getFirstName() : null;

@@ -4,7 +4,7 @@ import fr.arthurbr02.deploymanager.entity.PersonalAccessToken;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -13,9 +13,9 @@ public class TokenResponse {
     private UUID id;
     private String name;
     private String token; // Only populated on creation
-    private LocalDateTime createdAt;
-    private LocalDateTime expiresAt;
-    private LocalDateTime lastUsedAt;
+    private Instant createdAt;
+    private Instant expiresAt;
+    private Instant lastUsedAt;
 
     public static TokenResponse from(PersonalAccessToken pat) {
         return TokenResponse.builder()

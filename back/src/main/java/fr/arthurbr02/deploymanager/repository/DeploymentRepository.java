@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -28,12 +28,12 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID>, J
     @Query("SELECT d FROM Deployment d WHERE d.hostId IN :hostIds ORDER BY d.createdAt DESC")
     Page<Deployment> findByHostIdIn(List<UUID> hostIds, Pageable pageable);
 
-    long countByCreatedAtAfter(LocalDateTime since);
-    long countByCreatedAtAfterAndStatus(LocalDateTime since, DeploymentStatus status);
+    long countByCreatedAtAfter(Instant since);
+    long countByCreatedAtAfterAndStatus(Instant since, DeploymentStatus status);
     long countByStatus(DeploymentStatus status);
 
     @Query(value = "SELECT COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (finished_at - created_at))), 0) FROM deployments WHERE finished_at IS NOT NULL AND status = 'SUCCESS' AND (CAST(:since AS timestamp) IS NULL OR created_at > CAST(:since AS timestamp))", nativeQuery = true)
-    Double medianDurationSeconds(@Param("since") LocalDateTime since);
+    Double medianDurationSeconds(@Param("since") Instant since);
 
     @Query(value = """
         SELECT COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (finished_at - created_at))), 0)
@@ -44,7 +44,7 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID>, J
         AND (CAST(:type AS varchar) IS NULL OR type = CAST(:type AS varchar))
         """, nativeQuery = true)
     Double medianDurationFiltered(
-        @Param("since") LocalDateTime since,
+        @Param("since") Instant since,
         @Param("hostId") UUID hostId,
         @Param("type") String type
     );
@@ -58,7 +58,7 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID>, J
         AND (CAST(:type AS varchar) IS NULL OR type = CAST(:type AS varchar))
         """, nativeQuery = true)
     Double medianDurationFilteredByHosts(
-        @Param("since") LocalDateTime since,
+        @Param("since") Instant since,
         @Param("hostIds") Collection<UUID> hostIds,
         @Param("type") String type
     );
