@@ -1,6 +1,7 @@
 package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.host.*;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
 import fr.arthurbr02.deploymanager.util.ShellUtil;
 import fr.arthurbr02.deploymanager.entity.*;
 import fr.arthurbr02.deploymanager.enums.Role;
@@ -29,6 +30,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class HostService {
+
+    record HostAuditSnapshot(String name, String ip, String domain, String sshUser, Integer sshPort,
+                              String deploymentCommand, String generateCommand, String deliverCommand,
+                              String tlogCommand, String rollbackCommand, String healthcheckUrl,
+                              String dumpFolder, Integer defaultTimeout) {
+        static HostAuditSnapshot of(Host h) {
+            return new HostAuditSnapshot(h.getName(), h.getIp(), h.getDomain(), h.getSshUser(), h.getSshPort(),
+                    h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(),
+                    h.getTlogCommand(), h.getRollbackCommand(), h.getHealthcheckUrl(),
+                    h.getDumpFolder(), h.getDefaultTimeout());
+        }
+    }
+
+    record PermAuditSnapshot(UUID userId, UUID hostId, boolean canDeploy, boolean canEdit, boolean canExecute) {}
 
     private final HostRepository hostRepository;
     private final UserRepository userRepository;
@@ -113,7 +128,7 @@ public class HostService {
                 .defaultTimeout(req.defaultTimeout())
                 .build();
         host = hostRepository.save(host);
-        auditService.log("Host", host.getId(), "CREATE", null, host.getName());
+        auditService.log(AuditConstants.ENTITY_HOST, host.getId(), AuditConstants.ACTION_CREATE, null, HostAuditSnapshot.of(host));
         return HostResponse.from(host, isDumpAvailable(host));
     }
 
@@ -126,7 +141,7 @@ public class HostService {
                     .orElseThrow(() -> new ForbiddenException("Accès refusé"));
             if (!perm.isCanEdit()) throw new ForbiddenException("Permission insuffisante");
         }
-        String oldName = host.getName();
+        HostAuditSnapshot before = HostAuditSnapshot.of(host);
         host.setName(req.name());
         host.setIp(req.ip());
         host.setDomain(req.domain());
@@ -141,7 +156,7 @@ public class HostService {
         host.setDumpFolder(req.dumpFolder());
         host.setDefaultTimeout(req.defaultTimeout());
         host = hostRepository.save(host);
-        auditService.log("Host", host.getId(), "UPDATE", oldName, host.getName());
+        auditService.log(AuditConstants.ENTITY_HOST, host.getId(), AuditConstants.ACTION_UPDATE, before, HostAuditSnapshot.of(host));
         return HostResponse.from(host, isDumpAvailable(host));
     }
 
@@ -251,23 +266,28 @@ public class HostService {
     public void delete(UUID id, User currentUser) {
         Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+        HostAuditSnapshot snapshot = HostAuditSnapshot.of(host);
         host.setDeletedAt(LocalDateTime.now());
         host.setDeletedBy(currentUser.getId());
         hostRepository.save(host);
-        auditService.log("Host", id, "DELETE", host.getName(), null);
+        auditService.log(AuditConstants.ENTITY_HOST, id, AuditConstants.ACTION_DELETE, snapshot, null);
     }
 
     @Transactional
     public void setPermission(UUID userId, PermissionRequest req) {
         UserHostPermission perm = permissionRepository.findByUserIdAndHostId(userId, req.hostId())
                 .orElse(UserHostPermission.builder().userId(userId).hostId(req.hostId()).build());
+        PermAuditSnapshot before = new PermAuditSnapshot(userId, req.hostId(), perm.isCanDeploy(), perm.isCanEdit(), perm.isCanExecute());
         perm.setCanDeploy(req.canDeploy());
         perm.setCanEdit(req.canEdit());
         perm.setCanExecute(req.canExecute());
         if (!req.canDeploy() && !req.canEdit() && !req.canExecute()) {
             permissionRepository.deleteByUserIdAndHostId(userId, req.hostId());
+            auditService.log(AuditConstants.ENTITY_USER_HOST_PERMISSION, req.hostId(), AuditConstants.ACTION_DELETE, before, null);
         } else {
             permissionRepository.save(perm);
+            PermAuditSnapshot after = new PermAuditSnapshot(userId, req.hostId(), perm.isCanDeploy(), perm.isCanEdit(), perm.isCanExecute());
+            auditService.log(AuditConstants.ENTITY_USER_HOST_PERMISSION, req.hostId(), AuditConstants.ACTION_UPDATE, before, after);
         }
     }
 

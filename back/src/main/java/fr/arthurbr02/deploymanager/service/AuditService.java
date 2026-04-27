@@ -1,9 +1,12 @@
 package fr.arthurbr02.deploymanager.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.arthurbr02.deploymanager.entity.AuditLog;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,20 +20,17 @@ import fr.arthurbr02.deploymanager.repository.UserRepository;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void log(String entityName, UUID entityId, String action, String oldValue, String newValue) {
-        UUID userId = null;
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User user) {
-            userId = user.getId();
-        }
-
-        AuditLog log = AuditLog.builder()
+        UUID userId = resolveUserId();
+        AuditLog entry = AuditLog.builder()
                 .entityName(entityName)
                 .entityId(entityId)
                 .action(action)
@@ -38,33 +38,74 @@ public class AuditService {
                 .newValue(newValue)
                 .userId(userId)
                 .build();
-        auditLogRepository.save(log);
+        auditLogRepository.save(entry);
+    }
+
+    @Transactional
+    public void log(String entityName, UUID entityId, String action, Object oldEntity, Object newEntity) {
+        log(entityName, entityId, action, serialize(oldEntity), serialize(newEntity));
+    }
+
+    @Transactional
+    public void logAs(UUID userId, String entityName, UUID entityId, String action, Object oldEntity, Object newEntity) {
+        AuditLog entry = AuditLog.builder()
+                .entityName(entityName)
+                .entityId(entityId)
+                .action(action)
+                .oldValue(serialize(oldEntity))
+                .newValue(serialize(newEntity))
+                .userId(userId)
+                .build();
+        auditLogRepository.save(entry);
     }
 
     public Page<AuditLogResponse> findAll(int page, int size) {
-        Page<AuditLog> logs = auditLogRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size));
-        return logs.map(this::toResponse);
+        return auditLogRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size)).map(this::toResponse);
     }
 
     public Page<AuditLogResponse> findByUserId(UUID userId, int page, int size) {
-        Page<AuditLog> logs = auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size));
-        return logs.map(this::toResponse);
+        return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size)).map(this::toResponse);
     }
 
-    private AuditLogResponse toResponse(AuditLog log) {
+    public AuditLogResponse findById(UUID id) {
+        return auditLogRepository.findById(id)
+                .map(this::toResponse)
+                .orElseThrow(() -> new RuntimeException("Log introuvable"));
+    }
+
+    private UUID resolveUserId() {
+        try {
+            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (principal instanceof User user) return user.getId();
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private String serialize(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof String s) return s;
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            log.warn("Audit serialization failed: {}", e.getMessage());
+            return obj.toString();
+        }
+    }
+
+    private AuditLogResponse toResponse(AuditLog logEntry) {
         AuditLogResponse response = AuditLogResponse.builder()
-                .id(log.getId())
-                .entityName(log.getEntityName())
-                .entityId(log.getEntityId())
-                .action(log.getAction())
-                .oldValue(log.getOldValue())
-                .newValue(log.getNewValue())
-                .userId(log.getUserId())
-                .createdAt(log.getCreatedAt())
+                .id(logEntry.getId())
+                .entityName(logEntry.getEntityName())
+                .entityId(logEntry.getEntityId())
+                .action(logEntry.getAction())
+                .oldValue(logEntry.getOldValue())
+                .newValue(logEntry.getNewValue())
+                .userId(logEntry.getUserId())
+                .createdAt(logEntry.getCreatedAt())
                 .build();
 
-        if (log.getUserId() != null) {
-            userRepository.findById(log.getUserId()).ifPresent(user -> {
+        if (logEntry.getUserId() != null) {
+            userRepository.findById(logEntry.getUserId()).ifPresent(user -> {
                 response.setUserFirstName(user.getFirstName());
                 response.setUserLastName(user.getLastName());
                 response.setUserEmail(user.getEmail());

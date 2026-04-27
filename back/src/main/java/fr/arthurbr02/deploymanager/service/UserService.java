@@ -1,6 +1,8 @@
 package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.user.*;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
+import org.springframework.security.core.context.SecurityContextHolder;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.enums.Role;
 import fr.arthurbr02.deploymanager.repository.UserRepository;
@@ -33,8 +35,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     private static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
+
+    record UserAuditSnapshot(UUID id, String email, String firstName, String lastName, String role) {
+        static UserAuditSnapshot of(User u) {
+            return new UserAuditSnapshot(u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getRole().name());
+        }
+    }
 
     public List<UserResponse> findAll() {
         return userRepository.findAllByDeletedAtIsNull().stream()
@@ -60,6 +69,7 @@ public class UserService {
                 .password(passwordEncoder.encode(tmpPass))
                 .build();
         user = userRepository.save(user);
+        auditService.log(AuditConstants.ENTITY_USER, user.getId(), AuditConstants.ACTION_CREATE, null, UserAuditSnapshot.of(user));
         return new CreateUserResponse(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole().name(), tmpPass);
     }
 
@@ -67,10 +77,21 @@ public class UserService {
     public UserResponse update(UUID id, UpdateUserRequest req) {
         User user = userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        UserAuditSnapshot before = UserAuditSnapshot.of(user);
         user.setFirstName(req.firstName());
         user.setLastName(req.lastName());
         user.setRole(req.role());
-        return UserResponse.from(userRepository.save(user));
+        user = userRepository.save(user);
+        if (!id.equals(currentUserId())) {
+            auditService.log(AuditConstants.ENTITY_USER, id, AuditConstants.ACTION_UPDATE, before, UserAuditSnapshot.of(user));
+        }
+        return UserResponse.from(user);
+    }
+
+    private UUID currentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof User u) return u.getId();
+        return null;
     }
 
     @Transactional
@@ -80,9 +101,11 @@ public class UserService {
         if (user.getRole() == Role.ADMIN && userRepository.countByRoleAndDeletedAtIsNull(Role.ADMIN) <= 1) {
             throw new RuntimeException("Impossible de supprimer le dernier administrateur");
         }
+        UserAuditSnapshot snapshot = UserAuditSnapshot.of(user);
         user.setDeletedAt(LocalDateTime.now());
         user.setDeletedBy(currentUser.getId());
         userRepository.save(user);
+        auditService.log(AuditConstants.ENTITY_USER, id, AuditConstants.ACTION_DELETE, snapshot, null);
     }
 
     @Transactional

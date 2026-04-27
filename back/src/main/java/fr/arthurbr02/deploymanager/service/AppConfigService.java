@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.entity.AppConfig;
 import fr.arthurbr02.deploymanager.repository.AppConfigRepository;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,10 @@ public class AppConfigService {
         return (v != null && !v.isBlank()) ? v : defaultValue;
     }
 
+    public boolean getBoolean(String key) {
+        return "true".equalsIgnoreCase(get(key));
+    }
+
     public void saveAll(Map<String, String> settings) {
         settings.forEach((k, v) -> {
             AppConfig c = configRepository.findById(k)
@@ -37,7 +42,7 @@ public class AppConfigService {
             if (oldValue == null || !oldValue.equals(v)) {
                 c.setValue(v);
                 configRepository.save(c);
-                auditService.log("AppConfig", null, "UPDATE", k + "=" + oldValue, k + "=" + v);
+                auditService.log(AuditConstants.ENTITY_APP_CONFIG, null, AuditConstants.ACTION_UPDATE, k + "=" + oldValue, k + "=" + v);
             }
         });
     }

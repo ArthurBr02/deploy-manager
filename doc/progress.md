@@ -128,6 +128,20 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Backend : Ajout des en-têtes `X-Accel-Buffering: no` et `Cache-Control: no-transform` pour bloquer le buffering et la compression Gzip des proxys.
 - [x] Documentation : Mise à jour du README avec les prérequis (`expect`) et la configuration Nginx optimale.
 
+## Phase 13 : Audit Détaillé et Terminal
+
+### Sprint 21 : Traçabilité complète et vue Audit améliorée
+- [x] Backend : AuditService — surcharge JSON (snapshots complets), findById
+- [x] Backend : AuditController — endpoint GET /admin/audit/{id}
+- [x] Backend : UserService — audit CRUD (CREATE/UPDATE/DELETE) avec snapshot (sans password)
+- [x] Backend : HostService — snapshots JSON complets pour Host (CREATE/UPDATE/DELETE) + audit UserHostPermission
+- [x] Backend : TerminalHandler — log TERMINAL_CONNECT / TERMINAL_DISCONNECT / TERMINAL_COMMAND (si activé)
+- [x] Backend : AppConfigService — paramètre `audit_terminal_commands` (défaut : false)
+- [x] Frontend : AuditDetailModal.vue — modal diff champ par champ (JSON diff ou métadonnées)
+- [x] Frontend : AuditView.vue — bouton détail, liens entités cliquables, nouveaux badges (Terminal), responsive mobile
+- [x] Frontend : SettingsView.vue — toggle "Logger les commandes Terminal SSH" avec avertissement
+- [x] Frontend : adminAuditService.js — méthode getById
+
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).

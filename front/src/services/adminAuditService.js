@@ -7,4 +7,7 @@ export default {
   getByUserId(userId, page = 0, size = 20) {
     return axios.get(`/admin/audit/user/${userId}`, { params: { page, size } })
   },
+  getById(id) {
+    return axios.get(`/admin/audit/${id}`)
+  },
 }

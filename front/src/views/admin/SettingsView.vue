@@ -63,6 +63,17 @@
               class="w-4 h-4 text-accent border-warm-border rounded focus:ring-accent" />
             <label for="mcp-enabled" class="text-sm font-medium text-gray-700">Activer le protocole MCP (Model Context Protocol)</label>
           </div>
+          <div class="border-t border-warm-border/60 pt-4 space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700">Audit</h3>
+            <div class="flex items-start gap-3">
+              <input type="checkbox" v-model="settings.audit_terminal_commands" :true-value="'true'" :false-value="'false'" id="audit-terminal"
+                class="w-4 h-4 mt-0.5 text-accent border-warm-border rounded focus:ring-accent" />
+              <div>
+                <label for="audit-terminal" class="text-sm font-medium text-gray-700 cursor-pointer">Logger les commandes Terminal SSH</label>
+                <p class="text-xs text-amber-600 mt-0.5">Attention : les commandes tapées dans le terminal seront enregistrées dans les logs d'audit. Les mots de passe saisis directement peuvent être capturés.</p>
+              </div>
+            </div>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Clé SSH du serveur backend</label>
             <input v-model="settings.ssh_key_path" placeholder="/root/.ssh/id_rsa"
@@ -182,6 +193,7 @@ export default {
         shell_windows_arg: '/c',
         ssh_key_path: '',
         smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
+        audit_terminal_commands: 'false',
       },
       pageLoading: false,
       saving: false,

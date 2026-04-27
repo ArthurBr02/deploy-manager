@@ -12,6 +12,7 @@ import fr.arthurbr02.deploymanager.repository.HostRepository;
 import fr.arthurbr02.deploymanager.repository.UserHostPermissionRepository;
 import fr.arthurbr02.deploymanager.repository.UserRepository;
 import fr.arthurbr02.deploymanager.security.JwtUtil;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
@@ -40,9 +42,16 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final HostRepository hostRepository;
     private final UserHostPermissionRepository permissionRepository;
     private final AppConfigService configService;
-    
+    private final AuditService auditService;
+
     private final Map<String, SshSession> sshSessions = new ConcurrentHashMap<>();
+    private final Map<String, UUID> sessionHosts = new ConcurrentHashMap<>();
+    private final Map<String, UUID> sessionUsers = new ConcurrentHashMap<>();
+    private final Map<String, Long> sessionStartTimes = new ConcurrentHashMap<>();
+    private final Map<String, StringBuilder> commandBuffers = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
+
+    private static final Pattern ANSI_ESCAPE = Pattern.compile("\\[[0-9;]*[A-Za-z]");
 
     private record SshSession(Session session, ChannelShell channel, OutputStream out) {}
 
@@ -119,6 +128,12 @@ public class TerminalHandler extends TextWebSocketHandler {
             OutputStream out = channel.getOutputStream();
 
             sshSessions.put(wsSession.getId(), new SshSession(session, channel, out));
+            sessionHosts.put(wsSession.getId(), hostId);
+            sessionUsers.put(wsSession.getId(), user.getId());
+            sessionStartTimes.put(wsSession.getId(), System.currentTimeMillis());
+            commandBuffers.put(wsSession.getId(), new StringBuilder());
+            auditService.logAs(user.getId(), AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_CONNECT, null,
+                    Map.of("hostName", host.getName(), "userId", user.getId().toString()));
             wsSession.sendMessage(new TextMessage("*** Session SSH établie ***\r\n"));
 
             executor.execute(() -> {
@@ -162,13 +177,48 @@ public class TerminalHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession wsSession, TextMessage message) throws Exception {
         SshSession ssh = sshSessions.get(wsSession.getId());
         if (ssh != null && ssh.out != null) {
-            ssh.out.write(message.getPayload().getBytes());
+            String payload = message.getPayload();
+            ssh.out.write(payload.getBytes());
             ssh.out.flush();
+            accumulateCommand(wsSession.getId(), payload);
         }
+    }
+
+    private void accumulateCommand(String sessionId, String payload) {
+        StringBuilder buf = commandBuffers.get(sessionId);
+        if (buf == null) return;
+        for (char c : payload.toCharArray()) {
+            if (c == '\r' || c == '\n') {
+                String command = ANSI_ESCAPE.matcher(buf.toString()).replaceAll("").trim();
+                buf.setLength(0);
+                if (!command.isEmpty()) logCommand(sessionId, command);
+            } else if (c == '\u007f' || c == '\b') {
+                if (!buf.isEmpty()) buf.deleteCharAt(buf.length() - 1);
+            } else if (c >= 32) {
+                buf.append(c);
+            }
+        }
+    }
+
+    private void logCommand(String sessionId, String command) {
+        if (!"true".equals(configService.get("audit_terminal_commands", "false"))) return;
+        UUID hostId = sessionHosts.get(sessionId);
+        if (hostId == null) return;
+        UUID userId = sessionUsers.get(sessionId);
+        auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_COMMAND, null, Map.of("command", command));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession wsSession, CloseStatus status) throws Exception {
+        UUID hostId = sessionHosts.remove(wsSession.getId());
+        UUID userId = sessionUsers.remove(wsSession.getId());
+        commandBuffers.remove(wsSession.getId());
+        Long startTime = sessionStartTimes.remove(wsSession.getId());
+        if (hostId != null && startTime != null) {
+            long durationSeconds = (System.currentTimeMillis() - startTime) / 1000;
+            auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_DISCONNECT, null,
+                    Map.of("durationSeconds", durationSeconds));
+        }
         SshSession ssh = sshSessions.remove(wsSession.getId());
         if (ssh != null) {
             if (ssh.channel != null) ssh.channel.disconnect();

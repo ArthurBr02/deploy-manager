@@ -45,4 +45,10 @@ public class AuditController {
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(auditService.findByUserId(userId, page, size));
     }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Détail d'un log d'audit (admin)")
+    public ResponseEntity<AuditLogResponse> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(auditService.findById(id));
+    }
 }
