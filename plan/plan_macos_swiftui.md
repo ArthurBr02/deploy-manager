@@ -10,11 +10,12 @@ Créer une application macOS native en SwiftUI pour s'interfacer avec l'API exis
 ## Solution Proposée : Apprentissage en 6 Modules
 
 ### Module 1 : Fondations Swift & Couche Réseau (Network Layer)
-*Objectif : Authentification, requêtes HTTP asynchrones et sécurité.*
-- **Concepts Swift :** `struct`, optionnels (`?`, `guard let`), protocole `Codable`, `async/await`, `URLSession`.
+*Objectif : Configuration, authentification, requêtes HTTP asynchrones et sécurité.*
+- **Concepts Swift :** `struct`, optionnels (`?`, `guard let`), protocole `Codable`, `async/await`, `URLSession`, `@AppStorage` (`UserDefaults`).
 - **Tâches :**
+  - Gérer l'URL de l'API (ex: `https://api.monserveur.com`) de manière dynamique en la stockant en local via `@AppStorage` pour permettre à l'utilisateur de la configurer et de la modifier.
   - Modéliser `User`, `LoginRequest` et `LoginResponse`.
-  - Créer `APIClient` générique.
+  - Créer `APIClient` générique qui utilise l'URL configurée.
   - Sauvegarder le JWT (Access/Refresh) de façon sécurisée via le **Keychain macOS** (et non UserDefaults).
 
 ### Module 2 : Gestion de l'État Global et Fenêtre de Connexion
