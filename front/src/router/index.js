@@ -30,10 +30,13 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
   if (!to.meta.public && !auth.isAuthenticated) {
-    return next({ name: 'login', query: { redirect: to.fullPath } })
+    await auth.tryRestoreSession()
+    if (!auth.isAuthenticated) {
+      return next({ name: 'login', query: { redirect: to.fullPath } })
+    }
   }
   if (to.meta.admin && auth.user?.role !== 'ADMIN') {
     return next({ name: 'hosts' })

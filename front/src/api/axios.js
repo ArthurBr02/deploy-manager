@@ -20,7 +20,7 @@ api.interceptors.response.use(
   res => res,
   err => {
     const original = err.config
-    if (err.response?.status === 401 && !original._retry) {
+    if (err.response?.status === 401 && !original._retry && original.url !== '/auth/refresh') {
       original._retry = true
       if (!refreshing) {
         refreshing = api.post('/auth/refresh').then(r => {
