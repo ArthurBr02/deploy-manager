@@ -1,5 +1,6 @@
 package fr.arthurbr02.deploymanager.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -26,6 +28,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException e) {
+        log.error("Unhandled exception: {}", e.getMessage(), e);
         String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
         return ResponseEntity.badRequest().body(Map.of("error", message));
     }

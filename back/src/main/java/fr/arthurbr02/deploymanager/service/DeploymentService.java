@@ -472,6 +472,7 @@ public class DeploymentService {
         return deploymentRepository.findAll(spec, pageable).map(d -> DeploymentResponse.from(loadWithJoins(d)));
     }
 
+    @Transactional(readOnly = true)
     public byte[] exportCsv(User currentUser, UUID hostId, String search, String status, String type, String period) {
         Specification<Deployment> spec = buildSpec(currentUser, hostId, null, search, status, type, period);
         Sort sort = Sort.by("createdAt").descending();

@@ -83,6 +83,8 @@ import DeploymentTable from '@/components/DeploymentTable.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import { SearchIcon, DownloadIcon } from '@/components/icons'
 import { syncQuery } from '@/utils/query'
+import { mapStores } from 'pinia'
+import { useToastStore } from '@/stores/toast'
 
 export default {
   components: { DeploymentTable, DeploymentLogsModal, SearchIcon, DownloadIcon },
@@ -95,11 +97,11 @@ export default {
       total: 1,
       totalElements: 0,
       stats: null,
-      filters: { 
-        search: '', 
-        hostId: '', 
-        status: '', 
-        type: '', 
+      filters: {
+        search: '',
+        hostId: '',
+        status: '',
+        type: '',
         period: '7d',
         page: 0
       },
@@ -112,6 +114,7 @@ export default {
     }
   },
   computed: {
+    ...mapStores(useToastStore),
     periodLabel() {
       const map = { '24h': 'Dernières 24 h', '7d': '7 derniers jours', '30d': '30 derniers jours', '': 'Depuis toujours' }
       return map[this.filters.period] ?? ''
@@ -201,8 +204,12 @@ export default {
         const a = document.createElement('a')
         a.href = url
         a.download = 'deployments.csv'
+        document.body.appendChild(a)
         a.click()
-        URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 100)
+      }).catch(() => {
+        this.toastStore.error('Erreur lors de l\'export CSV')
       })
     },
   },

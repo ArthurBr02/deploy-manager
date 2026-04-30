@@ -180,3 +180,4 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Correction du fuseau horaire : Passage de `LocalDateTime` à `Instant` dans tout le backend pour assurer un affichage correct (UTC -> Local) dans le frontend.
 - [x] Correctif SSE : Résolution de la saturation des connexions (limite navigateur de 6) via l'utilisation de `sse-token` à usage unique, la fermeture systématique des flux sur erreur (`onerror`) et le maintien du flux jusqu'à la fin du healthcheck asynchrone.
 - [x] Correctif #7 : Ajout des champs "Commande de Rollback" et "URL Healthcheck" dans la page de modification d'un hôte (`HostEditView.vue`) — champs présents dans le backend mais absents du formulaire frontend.
+- [x] Correctif export CSV déploiements : correction du pattern de téléchargement blob (append/remove DOM + `setTimeout` pour `revokeObjectURL`) et ajout de la gestion d'erreur avec toast.
