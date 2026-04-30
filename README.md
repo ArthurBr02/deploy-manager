@@ -49,7 +49,7 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - CRUD utilisateurs (génération de mot de passe, gestion des rôles, avatar)
 - Page de détail utilisateur complète avec son historique de déploiements et son journal d'audit filtré
 - CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_execute`)
-- **Dumps SQL** : téléchargement direct du fichier `{host}.sql` si présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs)
+- **Dumps SQL** : téléchargement direct du fichier dump si présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs) ; activable/désactivable par hôte et nom de fichier configurable
 - Import de fichier Ansible `hosts-all` (parsing et mise à jour conditionnelle)
 - Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, shell, OS)
 - **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email)
@@ -498,5 +498,7 @@ Chaque hôte peut définir des commandes spécifiques pour chaque type d'opérat
 | `rollbackCommand` | TEXT | Commande de rollback |
 | `tlogCommand` | TEXT | Commande de logs applicatifs (surcharge le défaut global) |
 | `healthcheckUrl` | VARCHAR | URL vérifiée après un déploiement réussi (défaut : `https://{domain}`) |
+| `dumpEnabled` | BOOLEAN | Activer/désactiver la gestion des dumps SQL pour cet hôte (défaut : `true`) |
+| `dumpFilename` | VARCHAR | Nom du fichier dump attendu sur le serveur (défaut : `{host}.sql`) |
 
 Exemple : `sh /root/{host}/liv.sh` → `sh /root/vpn/liv.sh`

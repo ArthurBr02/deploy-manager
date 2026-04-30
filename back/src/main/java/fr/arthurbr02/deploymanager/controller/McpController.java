@@ -309,6 +309,8 @@ public class McpController {
                 (String) args.get("rollbackCommand"),
                 (String) args.get("healthcheckUrl"),
                 (String) args.get("dumpFolder"),
+                args.get("dumpEnabled") instanceof Boolean b ? b : null,
+                (String) args.get("dumpFilename"),
                 (Integer) args.get("defaultTimeout")
         );
     }

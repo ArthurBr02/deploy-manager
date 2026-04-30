@@ -45,5 +45,10 @@ public record HostRequest(
     @Size(max = 255)
     String dumpFolder,
 
+    Boolean dumpEnabled,
+
+    @Size(max = 255)
+    String dumpFilename,
+
     Integer defaultTimeout
 ) {}

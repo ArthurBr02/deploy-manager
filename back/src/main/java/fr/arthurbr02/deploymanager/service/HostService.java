@@ -34,12 +34,12 @@ public class HostService {
     record HostAuditSnapshot(String name, String ip, String domain, String sshUser, Integer sshPort,
                               String deploymentCommand, String generateCommand, String deliverCommand,
                               String tlogCommand, String rollbackCommand, String healthcheckUrl,
-                              String dumpFolder, Integer defaultTimeout) {
+                              String dumpFolder, boolean dumpEnabled, String dumpFilename, Integer defaultTimeout) {
         static HostAuditSnapshot of(Host h) {
             return new HostAuditSnapshot(h.getName(), h.getIp(), h.getDomain(), h.getSshUser(), h.getSshPort(),
                     h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(),
                     h.getTlogCommand(), h.getRollbackCommand(), h.getHealthcheckUrl(),
-                    h.getDumpFolder(), h.getDefaultTimeout());
+                    h.getDumpFolder(), h.isDumpEnabled(), h.getDumpFilename(), h.getDefaultTimeout());
         }
     }
 
@@ -103,11 +103,14 @@ public class HostService {
     }
 
     private boolean isDumpAvailable(Host h) {
+        if (!h.isDumpEnabled()) return false;
         String folder = h.getDumpFolder();
         if (folder == null || folder.isBlank()) {
             folder = configService.get("default_dump_folder", "/var/www/dumps");
         }
-        File file = new File(folder, h.getName() + ".sql");
+        String filename = (h.getDumpFilename() != null && !h.getDumpFilename().isBlank())
+                ? h.getDumpFilename() : h.getName() + ".sql";
+        File file = new File(folder, filename);
         return file.exists() && file.isFile();
     }
 
@@ -126,6 +129,8 @@ public class HostService {
                 .rollbackCommand(req.rollbackCommand())
                 .healthcheckUrl(req.healthcheckUrl())
                 .dumpFolder(req.dumpFolder())
+                .dumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true)
+                .dumpFilename(req.dumpFilename())
                 .defaultTimeout(req.defaultTimeout())
                 .build();
         host = hostRepository.save(host);
@@ -155,6 +160,8 @@ public class HostService {
         host.setRollbackCommand(req.rollbackCommand());
         host.setHealthcheckUrl(req.healthcheckUrl());
         host.setDumpFolder(req.dumpFolder());
+        host.setDumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true);
+        host.setDumpFilename(req.dumpFilename());
         host.setDefaultTimeout(req.defaultTimeout());
         host = hostRepository.save(host);
         auditService.log(AuditConstants.ENTITY_HOST, host.getId(), AuditConstants.ACTION_UPDATE, before, HostAuditSnapshot.of(host));
@@ -399,11 +406,16 @@ public class HostService {
                     .orElseThrow(() -> new ForbiddenException("Accès refusé"));
         }
 
+        if (!host.isDumpEnabled()) {
+            throw new ForbiddenException("Les dumps sont désactivés pour cet hôte");
+        }
         String folder = host.getDumpFolder();
         if (folder == null || folder.isBlank()) {
             folder = configService.get("default_dump_folder", "/var/www/dumps");
         }
-        File file = new File(folder, host.getName() + ".sql");
+        String filename = (host.getDumpFilename() != null && !host.getDumpFilename().isBlank())
+                ? host.getDumpFilename() : host.getName() + ".sql";
+        File file = new File(folder, filename);
         if (!file.exists() || !file.isFile()) {
             throw new RuntimeException("Dump indisponible");
         }
@@ -414,6 +426,10 @@ public class HostService {
     public void requestDump(UUID id, User requester) {
         Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        if (!host.isDumpEnabled()) {
+            throw new ForbiddenException("Les dumps sont désactivés pour cet hôte");
+        }
 
         // Access check
         if (requester.getRole() != Role.ADMIN) {

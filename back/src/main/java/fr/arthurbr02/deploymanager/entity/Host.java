@@ -54,6 +54,12 @@ public class Host {
     @Column(name = "dump_folder")
     private String dumpFolder;
 
+    @Column(name = "dump_enabled", nullable = false)
+    private boolean dumpEnabled = true;
+
+    @Column(name = "dump_filename")
+    private String dumpFilename;
+
     @Column(name = "default_timeout")
     private Integer defaultTimeout;
 

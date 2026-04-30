@@ -50,12 +50,14 @@
               </RouterLink>
 
               <!-- SQL Dump -->
-              <button v-if="host.isDumpAvailable" @click="downloadDump" :disabled="downloading" class="flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-600 rounded-md text-sm hover:bg-green-50 disabled:opacity-50">
-                <DownloadIcon class="w-3.5 h-3.5" /> {{ downloading ? 'Téléchargement...' : 'Télécharger le dump' }}
-              </button>
-              <button v-else @click="requestDump" :disabled="requesting" class="flex items-center gap-1.5 px-3 py-1.5 border border-amber-200 text-amber-600 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50">
-                <DatabaseIcon class="w-3.5 h-3.5" /> {{ requesting ? 'Demande envoyée' : 'Demander un dump' }}
-              </button>
+              <template v-if="host.dumpEnabled !== false">
+                <button v-if="host.isDumpAvailable" @click="downloadDump" :disabled="downloading" class="flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-600 rounded-md text-sm hover:bg-green-50 disabled:opacity-50">
+                  <DownloadIcon class="w-3.5 h-3.5" /> {{ downloading ? 'Téléchargement...' : 'Télécharger le dump' }}
+                </button>
+                <button v-else @click="requestDump" :disabled="requesting" class="flex items-center gap-1.5 px-3 py-1.5 border border-amber-200 text-amber-600 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50">
+                  <DatabaseIcon class="w-3.5 h-3.5" /> {{ requesting ? 'Demande envoyée' : 'Demander un dump' }}
+                </button>
+              </template>
 
               <RouterLink v-if="host.canEdit" :to="`/hosts/${host.id}/edit`" class="flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-sm hover:bg-warm-muted sm:ml-auto">
                 <EditIcon class="w-3.5 h-3.5" /> Modifier

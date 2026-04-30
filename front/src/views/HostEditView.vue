@@ -86,6 +86,17 @@
             </div>
           </div>
 
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="dumpEnabled" v-model="form.dumpEnabled" class="w-4 h-4 rounded border-warm-border text-accent focus:ring-accent/20" />
+            <label for="dumpEnabled" class="text-sm font-medium text-gray-700">Activer la gestion des dumps SQL</label>
+          </div>
+
+          <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nom du fichier dump (optionnel)</label>
+            <input v-model="form.dumpFilename" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`${form.name || '{host}'}.sql`" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Laisse vide pour utiliser le nom de l'hôte par défaut (<span class="font-mono">{{ form.name || '{host}' }}.sql</span>).</p>
+          </div>
+
           <div v-if="error" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ error }}</div>
 
           <div class="flex justify-end gap-2 pt-2">
@@ -125,6 +136,8 @@ export default {
         deliverCommand: '',
         tlogCommand: '',
         defaultTimeout: null,
+        dumpEnabled: true,
+        dumpFilename: '',
       },
       loading: true,
       saving: false,
@@ -146,6 +159,8 @@ export default {
           deliverCommand: res.data.deliverCommand || '',
           tlogCommand: res.data.tlogCommand || '',
           defaultTimeout: res.data.defaultTimeout ?? null,
+          dumpEnabled: res.data.dumpEnabled ?? true,
+          dumpFilename: res.data.dumpFilename || '',
         }
       }
     }).finally(() => {

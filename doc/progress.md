@@ -148,6 +148,16 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Frontend : adminAuditService.js — méthode getById
 - [x] Backend & Frontend : Groupement des commandes d'une même session terminal via `context_id`
 
+## Phase 14 : Améliorations Dumps SQL (Issues #6 et #10)
+
+### Sprint 22 : Options de configuration des dumps SQL par hôte
+- [x] Migration BDD (V17) : colonnes `dump_enabled` (BOOLEAN, défaut TRUE) et `dump_filename` (VARCHAR)
+- [x] Backend : Entité `Host` — ajout des champs `dumpEnabled` et `dumpFilename`
+- [x] Backend : DTOs (`HostRequest`, `HostResponse`, `HostWithStatusResponse`) — exposition des nouveaux champs
+- [x] Backend : `HostService` — `isDumpAvailable` et `getDump` utilisent le nom de fichier configurable ; `requestDump` et `getDump` vérifient `dumpEnabled` (403 si désactivé)
+- [x] Frontend : `HostDetailView` — boutons dump masqués si `dumpEnabled = false`
+- [x] Frontend : `HostEditForm` et `HostEditView` — toggle `dumpEnabled` + input `dumpFilename`
+
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).
