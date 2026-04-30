@@ -163,6 +163,29 @@
           <div v-if="importError" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ importError }}</div>
         </div>
 
+        <!-- Modale de confirmation import Ansible -->
+        <div v-if="showImportConfirm" class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+          <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="p-5 border-b border-warm-border">
+              <h2 class="font-semibold text-gray-900">Confirmer l'import Ansible</h2>
+              <p class="text-sm text-gray-500 mt-0.5">Cette action va mettre à jour les hôtes existants.</p>
+            </div>
+            <div class="p-5 space-y-3">
+              <div class="bg-warm-muted rounded-md px-3 py-2 text-xs font-mono text-gray-700 break-all">{{ pendingFile?.name }}</div>
+              <p class="text-sm text-gray-600">Pour chaque hôte trouvé dans le fichier :</p>
+              <ul class="text-sm text-gray-600 list-disc list-inside space-y-1 mt-1">
+                <li><span class="font-medium">Hôte existant (même nom)</span> — les champs <span class="font-mono text-xs bg-warm-muted px-1 rounded">IP</span> et <span class="font-mono text-xs bg-warm-muted px-1 rounded">domaine</span> seront écrasés. Toute la configuration (commandes, permissions, dumps…) est conservée.</li>
+                <li><span class="font-medium">Hôte inconnu</span> — un nouvel hôte sera créé avec le nom, l'IP et le domaine.</li>
+                <li><span class="font-medium">Hôtes absents du fichier</span> — non modifiés, aucune suppression.</li>
+              </ul>
+            </div>
+            <div class="p-4 bg-warm-muted border-t border-warm-border flex justify-end gap-2">
+              <button @click="cancelImport" class="px-4 py-2 rounded-md text-sm border border-warm-border bg-white hover:bg-warm-muted">Annuler</button>
+              <button @click="confirmImport" class="px-4 py-2 rounded-md text-sm bg-accent text-white hover:bg-accent-hover">Importer</button>
+            </div>
+          </div>
+        </div>
+
         <div v-if="saveError" class="text-sm text-status-failure bg-status-failure-bg rounded-md px-3 py-2">{{ saveError }}</div>
         <div class="flex justify-end pb-10">
           <button @click="save" :disabled="saving" class="w-full sm:w-auto px-6 py-2 bg-accent text-white rounded-md text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
@@ -208,6 +231,8 @@ export default {
       importError: '',
       isDragging: false,
       dragCounter: 0,
+      pendingFile: null,
+      showImportConfirm: false,
     }
   },
   mounted() {
@@ -248,11 +273,25 @@ export default {
       this.dragCounter = 0
       this.isDragging = false
       const file = event.dataTransfer.files[0]
-      if (file) this.uploadFile(file)
+      if (file) this.askImportConfirm(file)
     },
     handleFile(event) {
       const file = event.target.files[0]
-      if (file) this.uploadFile(file)
+      if (file) this.askImportConfirm(file)
+      event.target.value = ''
+    },
+    askImportConfirm(file) {
+      this.pendingFile = file
+      this.showImportConfirm = true
+    },
+    confirmImport() {
+      this.showImportConfirm = false
+      this.uploadFile(this.pendingFile)
+      this.pendingFile = null
+    },
+    cancelImport() {
+      this.showImportConfirm = false
+      this.pendingFile = null
     },
     uploadFile(file) {
       this.importResult = null
