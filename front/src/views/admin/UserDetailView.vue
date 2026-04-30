@@ -132,7 +132,7 @@
                       <div class="text-[10px] text-gray-400 font-mono tracking-tight">{{ host.ip }}</div>
                     </div>
                     <div class="flex gap-3">
-                      <button v-for="p in [{f: 'canDeploy', l: 'Deploy'}, {f: 'canEdit', l: 'Edit'}, {f: 'canExecute', l: 'SSH'}]" :key="p.f"
+                      <button v-for="p in [{f: 'canDeploy', l: 'Deploy'}, {f: 'canEdit', l: 'Edit'}, {f: 'canExecute', l: 'SSH'}, {f: 'canDump', l: 'Dump'}]" :key="p.f"
                         @click="togglePerm(host.id, p.f, !getPerm(host.id, p.f))"
                         class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border transition-all"
                         :class="getPerm(host.id, p.f) ? 'bg-accent border-accent text-white shadow-sm shadow-accent/20' : 'bg-white border-warm-border text-gray-400 hover:border-gray-300'">
@@ -247,7 +247,7 @@ export default {
           h.name?.toLowerCase().includes(this.filters.search.toLowerCase()) || 
           h.ip?.includes(this.filters.search)
         
-        const hasAccess = this.getPerm(h.id, 'canDeploy') || this.getPerm(h.id, 'canEdit') || this.getPerm(h.id, 'canExecute')
+        const hasAccess = this.getPerm(h.id, 'canDeploy') || this.getPerm(h.id, 'canEdit') || this.getPerm(h.id, 'canExecute') || this.getPerm(h.id, 'canDump')
         const matchesStatus = this.filters.status === '' || 
           (this.filters.status === 'access' && hasAccess) || 
           (this.filters.status === 'no-access' && !hasAccess)
@@ -369,13 +369,14 @@ export default {
     },
     togglePerm(hostId, field, value) {
       if (!this.isAdmin) return
-      const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false, canExecute: false }
+      const existing = this.permissions.find(p => p.hostId === hostId) || { hostId, canDeploy: false, canEdit: false, canExecute: false, canDump: false }
       const updated = { ...existing, [field]: value }
-      adminUsersService.setPermission(this.$route.params.id, { 
-        hostId, 
-        canDeploy: updated.canDeploy, 
+      adminUsersService.setPermission(this.$route.params.id, {
+        hostId,
+        canDeploy: updated.canDeploy,
         canEdit: updated.canEdit,
-        canExecute: updated.canExecute 
+        canExecute: updated.canExecute,
+        canDump: updated.canDump,
       }).then(() => {
         const idx = this.permissions.findIndex(p => p.hostId === hostId)
         if (idx >= 0) this.permissions[idx] = updated

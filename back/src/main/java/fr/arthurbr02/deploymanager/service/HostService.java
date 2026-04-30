@@ -34,16 +34,18 @@ public class HostService {
     record HostAuditSnapshot(String name, String ip, String domain, String sshUser, Integer sshPort,
                               String deploymentCommand, String generateCommand, String deliverCommand,
                               String tlogCommand, String rollbackCommand, String healthcheckUrl,
-                              String dumpFolder, boolean dumpEnabled, String dumpFilename, Integer defaultTimeout) {
+                              String dumpCommand, String dumpFolder, boolean dumpEnabled, String dumpFilename,
+                              Integer defaultTimeout) {
         static HostAuditSnapshot of(Host h) {
             return new HostAuditSnapshot(h.getName(), h.getIp(), h.getDomain(), h.getSshUser(), h.getSshPort(),
                     h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(),
                     h.getTlogCommand(), h.getRollbackCommand(), h.getHealthcheckUrl(),
-                    h.getDumpFolder(), h.isDumpEnabled(), h.getDumpFilename(), h.getDefaultTimeout());
+                    h.getDumpCommand(), h.getDumpFolder(), h.isDumpEnabled(), h.getDumpFilename(),
+                    h.getDefaultTimeout());
         }
     }
 
-    record PermEntry(UUID hostId, String hostName, boolean canDeploy, boolean canEdit, boolean canExecute) {}
+    record PermEntry(UUID hostId, String hostName, boolean canDeploy, boolean canEdit, boolean canExecute, boolean canDump) {}
     record AllPermsSnapshot(UUID userId, List<PermEntry> permissions) {}
 
     private final HostRepository hostRepository;
@@ -77,7 +79,8 @@ public class HostService {
             boolean canDeploy = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanDeploy());
             boolean canEdit = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanEdit());
             boolean canExecute = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanExecute());
-            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute, isDumpAvailable(h));
+            boolean canDump = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanDump());
+            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, isDumpAvailable(h));
         }).collect(Collectors.toList());
     }
 
@@ -98,8 +101,9 @@ public class HostService {
         boolean canDeploy = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDeploy());
         boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
         boolean canExecute = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanExecute());
+        boolean canDump = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDump());
 
-        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, isDumpAvailable(host));
+        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, isDumpAvailable(host));
     }
 
     private boolean isDumpAvailable(Host h) {
@@ -128,6 +132,7 @@ public class HostService {
                 .tlogCommand(req.tlogCommand())
                 .rollbackCommand(req.rollbackCommand())
                 .healthcheckUrl(req.healthcheckUrl())
+                .dumpCommand(req.dumpCommand())
                 .dumpFolder(req.dumpFolder())
                 .dumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true)
                 .dumpFilename(req.dumpFilename())
@@ -159,6 +164,7 @@ public class HostService {
         host.setTlogCommand(req.tlogCommand());
         host.setRollbackCommand(req.rollbackCommand());
         host.setHealthcheckUrl(req.healthcheckUrl());
+        host.setDumpCommand(req.dumpCommand());
         host.setDumpFolder(req.dumpFolder());
         host.setDumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true);
         host.setDumpFilename(req.dumpFilename());
@@ -290,7 +296,8 @@ public class HostService {
         perm.setCanDeploy(req.canDeploy());
         perm.setCanEdit(req.canEdit());
         perm.setCanExecute(req.canExecute());
-        if (!req.canDeploy() && !req.canEdit() && !req.canExecute()) {
+        perm.setCanDump(req.canDump());
+        if (!req.canDeploy() && !req.canEdit() && !req.canExecute() && !req.canDump()) {
             permissionRepository.deleteByUserIdAndHostId(userId, req.hostId());
         } else {
             permissionRepository.save(perm);
@@ -305,7 +312,7 @@ public class HostService {
         List<PermEntry> entries = permissionRepository.findByUserId(userId).stream()
                 .map(p -> new PermEntry(p.getHostId(),
                         p.getHost() != null ? p.getHost().getName() : null,
-                        p.isCanDeploy(), p.isCanEdit(), p.isCanExecute()))
+                        p.isCanDeploy(), p.isCanEdit(), p.isCanExecute(), p.isCanDump()))
                 .collect(Collectors.toList());
         return new AllPermsSnapshot(userId, entries);
     }
@@ -326,6 +333,7 @@ public class HostService {
             m.put("canDeploy", p.isCanDeploy());
             m.put("canEdit", p.isCanEdit());
             m.put("canExecute", p.isCanExecute());
+            m.put("canDump", p.isCanDump());
             return m;
         }).collect(Collectors.toList());
     }
@@ -437,14 +445,70 @@ public class HostService {
                     .orElseThrow(() -> new ForbiddenException("Accès refusé"));
         }
 
-        List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
         String subject = "[Deploy Manager] Demande de dump SQL : " + host.getName();
         String text = String.format("L'utilisateur %s %s (%s) demande un dump SQL pour l'hôte %s (%s).",
                 requester.getFirstName(), requester.getLastName(), requester.getEmail(),
                 host.getName(), host.getIp());
 
-        for (User admin : admins) {
-            mailService.sendEmail(admin.getEmail(), subject, text);
+        List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
+        Map<UUID, User> recipients = admins.stream().collect(Collectors.toMap(User::getId, u -> u));
+        permissionRepository.findByHostId(host.getId()).stream()
+                .filter(UserHostPermission::isCanDump)
+                .forEach(p -> userRepository.findByIdAndDeletedAtIsNull(p.getUserId())
+                        .filter(u -> u.getRole() != Role.ADMIN)
+                        .ifPresent(u -> recipients.put(u.getId(), u)));
+        recipients.values().forEach(u -> mailService.sendEmail(u.getEmail(), subject, text));
+    }
+
+    public void generateDump(UUID id, User user) {
+        Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        if (!host.isDumpEnabled()) {
+            throw new ForbiddenException("Les dumps sont désactivés pour cet hôte");
+        }
+        if (host.getDumpCommand() == null || host.getDumpCommand().isBlank()) {
+            throw new RuntimeException("Aucune commande de dump configurée pour cet hôte");
+        }
+
+        if (user.getRole() != Role.ADMIN) {
+            UserHostPermission perm = permissionRepository.findByUserIdAndHostId(user.getId(), id)
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+            if (!perm.isCanDump()) throw new ForbiddenException("Permission insuffisante");
+        }
+
+        String folder = (host.getDumpFolder() != null && !host.getDumpFolder().isBlank())
+                ? host.getDumpFolder() : configService.get("default_dump_folder", "/var/www/dumps");
+        String filename = (host.getDumpFilename() != null && !host.getDumpFilename().isBlank())
+                ? host.getDumpFilename() : host.getName() + ".sql";
+        String dumpPath = folder + "/" + filename;
+
+        String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
+        String command = ShellUtil.replaceVariables(host.getDumpCommand(), host.getName(), host.getIp(), effectiveDomain);
+        command = command.replace("{dump_name}", dumpPath);
+
+        String shellBin, shellArg;
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            shellBin = configService.get("shell_windows_bin", "cmd.exe");
+            shellArg = configService.get("shell_windows_arg", "/c");
+        } else {
+            shellBin = configService.get("shell_linux_bin", "/bin/sh");
+            shellArg = configService.get("shell_linux_arg", "-c");
+        }
+
+        try {
+            Process process = new ProcessBuilder(shellBin, shellArg, command)
+                    .redirectErrorStream(true)
+                    .start();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new RuntimeException("La commande de dump a échoué (code de sortie : " + exitCode + ")");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Dump interrompu");
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Erreur lors de l'exécution du dump : " + e.getMessage());
         }
     }
 }

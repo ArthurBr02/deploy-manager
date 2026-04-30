@@ -92,6 +92,12 @@
           </div>
 
           <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commande de dump (optionnel)</label>
+            <textarea v-model="form.dumpCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`pg_dump -U postgres mydb > {dump_name}`" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Variables : <span class="font-mono">{host}</span>, <span class="font-mono">{ip}</span>, <span class="font-mono">{domain}</span>, <span class="font-mono">{dump_name}</span> (chemin complet du fichier).</p>
+          </div>
+
+          <div v-if="form.dumpEnabled">
             <label class="block text-sm font-medium text-gray-700 mb-1">Nom du fichier dump (optionnel)</label>
             <input v-model="form.dumpFilename" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`${form.name || '{host}'}.sql`" />
             <p class="text-[10px] text-gray-400 mt-0.5">Laisse vide pour utiliser le nom de l'hôte par défaut (<span class="font-mono">{{ form.name || '{host}' }}.sql</span>).</p>
@@ -137,6 +143,7 @@ export default {
         tlogCommand: '',
         defaultTimeout: null,
         dumpEnabled: true,
+        dumpCommand: '',
         dumpFilename: '',
       },
       loading: true,
@@ -160,6 +167,7 @@ export default {
           tlogCommand: res.data.tlogCommand || '',
           defaultTimeout: res.data.defaultTimeout ?? null,
           dumpEnabled: res.data.dumpEnabled ?? true,
+          dumpCommand: res.data.dumpCommand || '',
           dumpFilename: res.data.dumpFilename || '',
         }
       }

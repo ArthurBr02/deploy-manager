@@ -13,5 +13,6 @@ export default {
   },
   downloadDump: (id) => api.get(`/hosts/${id}/dump`, { responseType: 'blob' }),
   requestDump: (id) => api.post(`/hosts/${id}/dump-request`),
+  generateDump: (id) => api.post(`/hosts/${id}/dump/generate`),
   getTlogStreamUrl: (id, token) => `${import.meta.env.VITE_API_URL || '/api'}/hosts/${id}/tlog?token=${token}`,
 }

@@ -54,6 +54,9 @@ public class Host {
     @Column(name = "dump_folder")
     private String dumpFolder;
 
+    @Column(name = "dump_command", columnDefinition = "TEXT")
+    private String dumpCommand;
+
     @Column(name = "dump_enabled", nullable = false)
     private boolean dumpEnabled = true;
 

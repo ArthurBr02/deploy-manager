@@ -51,7 +51,10 @@
 
               <!-- SQL Dump -->
               <template v-if="host.dumpEnabled !== false">
-                <button v-if="host.isDumpAvailable" @click="downloadDump" :disabled="downloading" class="flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-600 rounded-md text-sm hover:bg-green-50 disabled:opacity-50">
+                <button v-if="host.dumpCommand && host.canDump" @click="generateAndDownload" :disabled="generating" class="flex items-center gap-1.5 px-3 py-1.5 border border-blue-200 text-blue-600 rounded-md text-sm hover:bg-blue-50 disabled:opacity-50">
+                  <DatabaseIcon class="w-3.5 h-3.5" /> {{ generating ? 'Génération...' : 'Générer le dump' }}
+                </button>
+                <button v-else-if="host.isDumpAvailable" @click="downloadDump" :disabled="downloading" class="flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-600 rounded-md text-sm hover:bg-green-50 disabled:opacity-50">
                   <DownloadIcon class="w-3.5 h-3.5" /> {{ downloading ? 'Téléchargement...' : 'Télécharger le dump' }}
                 </button>
                 <button v-else @click="requestDump" :disabled="requesting" class="flex items-center gap-1.5 px-3 py-1.5 border border-amber-200 text-amber-600 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50">
@@ -257,6 +260,7 @@ export default {
       histLoading: false,
       downloading: false,
       requesting: false,
+      generating: false,
       tlogLines: [],
       tlogActive: false,
       _sseSource: null,
@@ -446,6 +450,25 @@ export default {
       } else {
         setTimeout(() => this.loadHistory(), 500)
       }
+    },
+    generateAndDownload() {
+      this.generating = true
+      hostsService.generateDump(this.host.id).then(() => {
+        this.toastStore.success('Dump généré, téléchargement en cours...')
+        return hostsService.downloadDump(this.host.id)
+      }).then(res => {
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `${this.host.name}.sql`)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      }).catch(e => {
+        this.toastStore.error(e.response?.data?.error || 'Erreur lors de la génération du dump')
+      }).finally(() => {
+        this.generating = false
+      })
     },
     downloadDump() {
       this.downloading = true

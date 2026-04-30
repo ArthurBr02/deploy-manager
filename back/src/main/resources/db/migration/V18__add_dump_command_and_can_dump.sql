@@ -1,0 +1,2 @@
+ALTER TABLE hosts ADD COLUMN dump_command TEXT;
+ALTER TABLE user_host_permissions ADD COLUMN can_dump BOOLEAN NOT NULL DEFAULT FALSE;

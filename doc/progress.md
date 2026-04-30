@@ -158,6 +158,18 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Frontend : `HostDetailView` — boutons dump masqués si `dumpEnabled = false`
 - [x] Frontend : `HostEditForm` et `HostEditView` — toggle `dumpEnabled` + input `dumpFilename`
 
+### Sprint 23 : Commande de dump + permission canDump (Issue #16)
+- [x] Migration BDD (V18) : colonne `dump_command` sur `hosts`, colonne `can_dump` sur `user_host_permissions`
+- [x] Backend : Entité `Host` — champ `dumpCommand` ; entité `UserHostPermission` — champ `canDump`
+- [x] Backend : DTOs (`HostRequest`, `PermissionRequest`, `HostResponse`, `HostWithStatusResponse`) — nouveaux champs
+- [x] Backend : `HostService.generateDump()` — exécution de la commande avec remplacement `{dump_name}`, `{host}`, `{ip}`, `{domain}`
+- [x] Backend : `HostService.requestDump()` — emails envoyés aux admins ET aux utilisateurs `canDump` de l'hôte
+- [x] Backend : `HostController` — endpoint `POST /hosts/{id}/dump/generate`
+- [x] Frontend : `hostsService.js` — méthode `generateDump`
+- [x] Frontend : `HostDetailView` — bouton "Générer le dump" (visible si `canDump && dumpCommand && dumpEnabled`)
+- [x] Frontend : `HostEditForm` + `HostEditView` — champ `dumpCommand`
+- [x] Frontend : `UserDetailView` — toggle permission "Dump" dans la gestion des droits
+
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).

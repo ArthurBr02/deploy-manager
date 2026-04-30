@@ -42,6 +42,9 @@ public record HostRequest(
     @Size(max = 500)
     String healthcheckUrl,
 
+    @Size(max = 1000)
+    String dumpCommand,
+
     @Size(max = 255)
     String dumpFolder,
 

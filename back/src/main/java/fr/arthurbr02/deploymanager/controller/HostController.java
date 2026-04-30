@@ -57,6 +57,13 @@ public class HostController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/hosts/{id}/dump/generate")
+    @Operation(summary = "Générer le dump SQL d'un hôte via la commande configurée")
+    public ResponseEntity<Void> generateDump(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        hostService.generateDump(id, user);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/hosts")
     @Operation(summary = "Lister les hôtes accessibles")
     public ResponseEntity<List<HostWithStatusResponse>> list(@AuthenticationPrincipal User user) {

@@ -192,6 +192,7 @@ public class McpController {
             permProps.put("canDeploy", Map.of("type", "boolean"));
             permProps.put("canEdit", Map.of("type", "boolean"));
             permProps.put("canExecute", Map.of("type", "boolean"));
+            permProps.put("canDump", Map.of("type", "boolean"));
             tools.add(Map.of("name", "set_permissions", "description", "Gérer les permissions (Admin)", "inputSchema", Map.of("type", "object", "properties", permProps)));
             
             tools.add(Map.of("name", "get_settings", "description", "Voir les paramètres globaux (Admin)", "inputSchema", Map.of("type", "object", "properties", Map.of())));
@@ -269,7 +270,8 @@ public class McpController {
                         UUID.fromString((String) args.get("hostId")),
                         (boolean) args.get("canDeploy"),
                         (boolean) args.get("canEdit"),
-                        args.containsKey("canExecute") ? (boolean) args.get("canExecute") : false
+                        args.containsKey("canExecute") ? (boolean) args.get("canExecute") : false,
+                        args.containsKey("canDump") ? (boolean) args.get("canDump") : false
                 ));
                 return textResponse("Permissions mises à jour");
 
@@ -308,6 +310,7 @@ public class McpController {
                 (String) args.get("tlogCommand"),
                 (String) args.get("rollbackCommand"),
                 (String) args.get("healthcheckUrl"),
+                (String) args.get("dumpCommand"),
                 (String) args.get("dumpFolder"),
                 args.get("dumpEnabled") instanceof Boolean b ? b : null,
                 (String) args.get("dumpFilename"),
