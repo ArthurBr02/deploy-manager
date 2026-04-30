@@ -141,6 +141,7 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Frontend : AuditView.vue — bouton détail, liens entités cliquables, nouveaux badges (Terminal), responsive mobile
 - [x] Frontend : SettingsView.vue — toggle "Logger les commandes Terminal SSH" avec avertissement
 - [x] Frontend : adminAuditService.js — méthode getById
+- [x] Backend & Frontend : Groupement des commandes d'une même session terminal via `context_id`
 
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.

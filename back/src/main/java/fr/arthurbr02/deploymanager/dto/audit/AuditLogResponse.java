@@ -20,6 +20,7 @@ public class AuditLogResponse {
     private String oldValue;
     private String newValue;
     private UUID userId;
+    private UUID contextId;
     private String userFirstName;
     private String userLastName;
     private String userEmail;

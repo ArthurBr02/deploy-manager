@@ -31,25 +31,21 @@ public class AuditService {
 
     @Transactional
     public void log(String entityName, UUID entityId, String action, String oldValue, String newValue) {
-        UUID userId = resolveUserId();
-        AuditLog entry = AuditLog.builder()
-                .entityName(entityName)
-                .entityId(entityId)
-                .action(action)
-                .oldValue(oldValue)
-                .newValue(newValue)
-                .userId(userId)
-                .build();
-        auditLogRepository.save(entry);
+        logAs(resolveUserId(), entityName, entityId, action, null, oldValue, newValue);
     }
 
     @Transactional
     public void log(String entityName, UUID entityId, String action, Object oldEntity, Object newEntity) {
-        log(entityName, entityId, action, serialize(oldEntity), serialize(newEntity));
+        logAs(resolveUserId(), entityName, entityId, action, null, serialize(oldEntity), serialize(newEntity));
     }
 
     @Transactional
     public void logAs(UUID userId, String entityName, UUID entityId, String action, Object oldEntity, Object newEntity) {
+        logAs(userId, entityName, entityId, action, null, serialize(oldEntity), serialize(newEntity));
+    }
+
+    @Transactional
+    public void logAs(UUID userId, String entityName, UUID entityId, String action, UUID contextId, Object oldEntity, Object newEntity) {
         AuditLog entry = AuditLog.builder()
                 .entityName(entityName)
                 .entityId(entityId)
@@ -57,6 +53,7 @@ public class AuditService {
                 .oldValue(serialize(oldEntity))
                 .newValue(serialize(newEntity))
                 .userId(userId)
+                .contextId(contextId)
                 .build();
         auditLogRepository.save(entry);
     }
@@ -118,6 +115,7 @@ public class AuditService {
                 .oldValue(logEntry.getOldValue())
                 .newValue(logEntry.getNewValue())
                 .userId(logEntry.getUserId())
+                .contextId(logEntry.getContextId())
                 .createdAt(logEntry.getCreatedAt())
                 .build();
 

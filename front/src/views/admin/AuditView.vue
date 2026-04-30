@@ -22,50 +22,128 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="log in logs" :key="log.id"
-                class="border-b border-warm-border/50 hover:bg-warm-muted/40 transition-colors">
-                <td class="py-3 px-3 lg:px-4 whitespace-nowrap text-gray-500 text-xs">{{ formatDate(log.createdAt) }}</td>
-                <td class="py-3 px-3 lg:px-4">
-                  <component :is="entityRoute(log) ? 'RouterLink' : 'span'"
-                    v-bind="entityRoute(log) ? { to: entityRoute(log), class: 'font-medium text-accent hover:underline' } : { class: 'font-medium text-gray-900' }">
-                    {{ log.entityName }}
-                  </component>
-                  <div class="text-[10px] text-gray-400 font-mono truncate max-w-[120px] lg:max-w-[160px]">{{ log.entityId }}</div>
-                </td>
-                <td class="py-3 px-3 lg:px-4 whitespace-nowrap">
-                  <span :class="getActionClass(log.action)" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                    {{ actionLabel(log.action) }}
-                  </span>
-                </td>
-                <td class="py-3 px-3 lg:px-4 text-gray-500">
-                  <UserBadge :user="{
-                    id: log.userId,
-                    firstName: log.userFirstName,
-                    lastName: log.userLastName,
-                    email: log.userEmail,
-                    avatar: log.userAvatar
-                  }" />
-                </td>
-                <td class="py-3 px-3 lg:px-4 hidden sm:table-cell">
-                  <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-xs text-gray-400" :title="log.oldValue">
-                    {{ log.oldValue ? truncate(log.oldValue) : '—' }}
-                  </span>
-                </td>
-                <td class="py-3 px-3 lg:px-4 hidden sm:table-cell">
-                  <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-xs text-gray-600" :title="log.newValue">
-                    {{ log.newValue ? truncate(log.newValue) : '—' }}
-                  </span>
-                </td>
-                <td class="py-3 px-3 lg:px-4 text-right">
-                  <button @click="openDetail(log)" title="Voir le détail"
-                    class="p-1.5 rounded-md hover:bg-warm-muted text-gray-400 hover:text-accent transition-colors">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                  </button>
-                </td>
-              </tr>
+              <template v-for="item in processedLogs" :key="item.id">
+                <!-- Single Log -->
+                <tr v-if="item.type === 'single'"
+                  class="border-b border-warm-border/50 hover:bg-warm-muted/40 transition-colors">
+                  <td class="py-3 px-3 lg:px-4 whitespace-nowrap text-gray-500 text-xs">{{ formatDate(item.log.createdAt) }}</td>
+                  <td class="py-3 px-3 lg:px-4">
+                    <component :is="entityRoute(item.log) ? 'RouterLink' : 'span'"
+                      v-bind="entityRoute(item.log) ? { to: entityRoute(item.log), class: 'font-medium text-accent hover:underline' } : { class: 'font-medium text-gray-900' }">
+                      {{ item.log.entityName }}
+                    </component>
+                    <div class="text-[10px] text-gray-400 font-mono truncate max-w-[120px] lg:max-w-[160px]">{{ item.log.entityId }}</div>
+                  </td>
+                  <td class="py-3 px-3 lg:px-4 whitespace-nowrap">
+                    <span :class="getActionClass(item.log.action)" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                      {{ actionLabel(item.log.action) }}
+                    </span>
+                  </td>
+                  <td class="py-3 px-3 lg:px-4 text-gray-500">
+                    <UserBadge :user="{
+                      id: item.log.userId,
+                      firstName: item.log.userFirstName,
+                      lastName: item.log.userLastName,
+                      email: item.log.userEmail,
+                      avatar: item.log.userAvatar
+                    }" />
+                  </td>
+                  <td class="py-3 px-3 lg:px-4 hidden sm:table-cell">
+                    <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-xs text-gray-400" :title="item.log.oldValue">
+                      {{ item.log.oldValue ? truncate(item.log.oldValue) : '—' }}
+                    </span>
+                  </td>
+                  <td class="py-3 px-3 lg:px-4 hidden sm:table-cell">
+                    <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-xs text-gray-600" :title="item.log.newValue">
+                      {{ item.log.newValue ? truncate(item.log.newValue) : '—' }}
+                    </span>
+                  </td>
+                  <td class="py-3 px-3 lg:px-4 text-right">
+                    <button @click="openDetail(item.log)" title="Voir le détail"
+                      class="p-1.5 rounded-md hover:bg-warm-muted text-gray-400 hover:text-accent transition-colors">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Grouped Logs -->
+                <template v-else>
+                  <tr class="border-b border-warm-border/50 bg-warm-muted/10 hover:bg-warm-muted/30 transition-colors cursor-pointer"
+                    @click="toggleGroup(item.contextId)">
+                    <td class="py-3 px-3 lg:px-4 whitespace-nowrap text-gray-500 text-xs">{{ formatDate(item.mainLog.createdAt) }}</td>
+                    <td class="py-3 px-3 lg:px-4">
+                      <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="{ 'rotate-90': isExpanded(item.contextId) }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="font-medium text-gray-900">{{ getGroupLabel(item) }}</span>
+                      </div>
+                      <div class="text-[10px] text-gray-400 font-mono pl-5">{{ item.mainLog.entityId }}</div>
+                    </td>
+                    <td class="py-3 px-3 lg:px-4 whitespace-nowrap">
+                      <span :class="getActionClass(getGroupAction(item))" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                        SESSION
+                      </span>
+                    </td>
+                    <td class="py-3 px-3 lg:px-4 text-gray-500">
+                      <UserBadge :user="{
+                        id: item.mainLog.userId,
+                        firstName: item.mainLog.userFirstName,
+                        lastName: item.mainLog.userLastName,
+                        email: item.mainLog.userEmail,
+                        avatar: item.mainLog.userAvatar
+                      }" />
+                    </td>
+                    <td colspan="2" class="py-3 px-3 lg:px-4 hidden sm:table-cell italic text-gray-400 text-xs">
+                      Contient {{ item.logs.length }} événements terminal
+                    </td>
+                    <td class="py-3 px-3 lg:px-4 text-right">
+                      <button class="p-1.5 rounded-md hover:bg-warm-muted text-gray-400 hover:text-accent transition-colors">
+                        <svg class="w-4 h-4" :class="{ 'rotate-180': isExpanded(item.contextId) }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                  
+                  <!-- Expanded Group Content -->
+                  <tr v-if="isExpanded(item.contextId)" v-for="log in item.logs" :key="log.id"
+                    class="border-b border-warm-border/30 bg-warm-muted/5 hover:bg-warm-muted/20 transition-colors">
+                    <td class="py-2 px-3 lg:px-4 whitespace-nowrap text-gray-400 text-[10px] pl-6 lg:pl-8">{{ formatDate(log.createdAt) }}</td>
+                    <td class="py-2 px-3 lg:px-4 pl-8 lg:pl-10">
+                      <span class="text-xs text-gray-500">{{ log.entityName }}</span>
+                    </td>
+                    <td class="py-2 px-3 lg:px-4 whitespace-nowrap">
+                      <span :class="getActionClass(log.action)" class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase opacity-80">
+                        {{ actionLabel(log.action) }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3 lg:px-4"></td>
+                    <td class="py-2 px-3 lg:px-4 hidden sm:table-cell">
+                      <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-[11px] text-gray-400">
+                        {{ log.oldValue ? truncate(log.oldValue) : '—' }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3 lg:px-4 hidden sm:table-cell">
+                      <span class="block truncate max-w-[140px] lg:max-w-xs font-mono text-[11px] text-gray-600">
+                        {{ log.newValue ? truncate(log.newValue) : '—' }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3 lg:px-4 text-right">
+                      <button @click="openDetail(log)"
+                        class="p-1 rounded-md hover:bg-warm-muted text-gray-400 hover:text-accent transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </template>
               <tr v-if="!loading && !logs.length">
                 <td colspan="7" class="py-20 text-center text-gray-400 italic">Aucun log d'audit trouvé</td>
               </tr>
@@ -128,12 +206,62 @@ export default {
       page: 0,
       totalPages: 0,
       selectedLog: null,
+      expandedGroups: new Set(),
+    }
+  },
+  computed: {
+    processedLogs() {
+      const result = []
+      let i = 0
+      while (i < this.logs.length) {
+        const log = this.logs[i]
+        if (log.contextId && log.entityName === 'Terminal') {
+          const group = {
+            id: log.contextId,
+            type: 'group',
+            contextId: log.contextId,
+            logs: [log],
+            mainLog: log
+          }
+          let j = i + 1
+          while (j < this.logs.length && this.logs[j].contextId === log.contextId) {
+            group.logs.push(this.logs[j])
+            j++
+          }
+          result.push(group)
+          i = j
+        } else {
+          result.push({ type: 'single', log, id: log.id })
+          i++
+        }
+      }
+      return result
     }
   },
   mounted() {
     this.load()
   },
   methods: {
+    toggleGroup(contextId) {
+      if (this.expandedGroups.has(contextId)) {
+        this.expandedGroups.delete(contextId)
+      } else {
+        this.expandedGroups.add(contextId)
+      }
+      // Force reactivity
+      this.expandedGroups = new Set(this.expandedGroups)
+    },
+    isExpanded(contextId) {
+      return this.expandedGroups.has(contextId)
+    },
+    getGroupLabel(group) {
+      const commands = group.logs.filter(l => l.action === 'TERMINAL_COMMAND').length
+      return `Session Terminal (${commands} commande${commands > 1 ? 's' : ''})`
+    },
+    getGroupAction(group) {
+      if (group.logs.some(l => l.action === 'TERMINAL_CONNECT')) return 'TERMINAL_CONNECT'
+      return 'TERMINAL_COMMAND'
+    },
     load() {
       this.loading = true
       adminAuditService.list(this.page).then(res => {

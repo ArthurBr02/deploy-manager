@@ -32,6 +32,9 @@ public class AuditLog {
     @Column(name = "user_id")
     private UUID userId;
 
+    @Column(name = "context_id")
+    private UUID contextId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

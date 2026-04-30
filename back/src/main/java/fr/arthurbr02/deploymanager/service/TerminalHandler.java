@@ -47,6 +47,7 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final Map<String, SshSession> sshSessions = new ConcurrentHashMap<>();
     private final Map<String, UUID> sessionHosts = new ConcurrentHashMap<>();
     private final Map<String, UUID> sessionUsers = new ConcurrentHashMap<>();
+    private final Map<String, UUID> sessionContextIds = new ConcurrentHashMap<>();
     private final Map<String, Long> sessionStartTimes = new ConcurrentHashMap<>();
     private final Map<String, StringBuilder> commandBuffers = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -127,12 +128,14 @@ public class TerminalHandler extends TextWebSocketHandler {
             InputStream in = channel.getInputStream();
             OutputStream out = channel.getOutputStream();
 
+            UUID contextId = UUID.randomUUID();
             sshSessions.put(wsSession.getId(), new SshSession(session, channel, out));
             sessionHosts.put(wsSession.getId(), hostId);
             sessionUsers.put(wsSession.getId(), user.getId());
+            sessionContextIds.put(wsSession.getId(), contextId);
             sessionStartTimes.put(wsSession.getId(), System.currentTimeMillis());
             commandBuffers.put(wsSession.getId(), new StringBuilder());
-            auditService.logAs(user.getId(), AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_CONNECT, null,
+            auditService.logAs(user.getId(), AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_CONNECT, contextId, null,
                     Map.of("hostName", host.getName(), "userId", user.getId().toString()));
             wsSession.sendMessage(new TextMessage("*** Session SSH établie ***\r\n"));
 
@@ -205,18 +208,20 @@ public class TerminalHandler extends TextWebSocketHandler {
         UUID hostId = sessionHosts.get(sessionId);
         if (hostId == null) return;
         UUID userId = sessionUsers.get(sessionId);
-        auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_COMMAND, null, Map.of("command", command));
+        UUID contextId = sessionContextIds.get(sessionId);
+        auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_COMMAND, contextId, null, Map.of("command", command));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession wsSession, CloseStatus status) throws Exception {
         UUID hostId = sessionHosts.remove(wsSession.getId());
         UUID userId = sessionUsers.remove(wsSession.getId());
+        UUID contextId = sessionContextIds.remove(wsSession.getId());
         commandBuffers.remove(wsSession.getId());
         Long startTime = sessionStartTimes.remove(wsSession.getId());
         if (hostId != null && startTime != null) {
             long durationSeconds = (System.currentTimeMillis() - startTime) / 1000;
-            auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_DISCONNECT, null,
+            auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_DISCONNECT, contextId, null,
                     Map.of("durationSeconds", durationSeconds));
         }
         SshSession ssh = sshSessions.remove(wsSession.getId());
