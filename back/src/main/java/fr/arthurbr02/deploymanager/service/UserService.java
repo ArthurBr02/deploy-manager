@@ -114,7 +114,6 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         user.setFirstName(req.firstName());
         user.setLastName(req.lastName());
-        user.setAvatar(req.avatar());
         return UserResponse.from(userRepository.save(user));
     }
 
