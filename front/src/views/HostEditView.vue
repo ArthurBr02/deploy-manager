@@ -79,6 +79,16 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commande de Rollback (optionnel)</label>
+            <textarea v-model="form.rollbackCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour masquer le bouton" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">URL Healthcheck (optionnel)</label>
+            <input v-model="form.healthcheckUrl" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="https://{domain}/health" />
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Timeout spécifique (minutes)</label>
             <div class="flex items-center gap-2">
               <input v-model.number="form.defaultTimeout" type="number" min="0" class="w-24 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -141,6 +151,8 @@ export default {
         generateCommand: '',
         deliverCommand: '',
         tlogCommand: '',
+        rollbackCommand: '',
+        healthcheckUrl: '',
         defaultTimeout: null,
         dumpEnabled: true,
         dumpCommand: '',
@@ -165,6 +177,8 @@ export default {
           generateCommand: res.data.generateCommand || '',
           deliverCommand: res.data.deliverCommand || '',
           tlogCommand: res.data.tlogCommand || '',
+          rollbackCommand: res.data.rollbackCommand || '',
+          healthcheckUrl: res.data.healthcheckUrl || '',
           defaultTimeout: res.data.defaultTimeout ?? null,
           dumpEnabled: res.data.dumpEnabled ?? true,
           dumpCommand: res.data.dumpCommand || '',
@@ -189,6 +203,8 @@ export default {
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,
         tlogCommand: this.form.tlogCommand || null,
+        rollbackCommand: this.form.rollbackCommand || null,
+        healthcheckUrl: this.form.healthcheckUrl || null,
         domain: this.form.domain || null,
       }).then(() => {
         this.toastStore.success('Hôte mis à jour')
