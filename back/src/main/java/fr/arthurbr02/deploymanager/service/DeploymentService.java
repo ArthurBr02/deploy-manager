@@ -190,6 +190,7 @@ public class DeploymentService {
 
     private void persistFinalStatus(UUID deploymentId, DeploymentStatus status, String logFile) {
         deploymentRepository.findById(deploymentId).ifPresent(d -> {
+            boolean healthcheckTriggered = false;
             if (d.getStatus() == DeploymentStatus.IN_PROGRESS) {
                 d.setStatus(status);
                 d.setFinishedAt(Instant.now());
@@ -198,33 +199,48 @@ public class DeploymentService {
                 broadcastStatusEvent(d.getHostId(), deploymentId, status);
 
                 if (status == DeploymentStatus.SUCCESS) {
-                    CompletableFuture.runAsync(() -> performHealthcheck(d));
+                    healthcheckTriggered = triggerHealthcheck(d);
                 } else if (status == DeploymentStatus.FAILURE) {
                     notificationService.notifyDeploymentFailure(d);
                 }
             }
-            broadcastLog(deploymentId, null);
-            closeEmitters(deploymentId);
+            
+            if (!healthcheckTriggered) {
+                broadcastLog(deploymentId, null);
+                closeEmitters(deploymentId);
+            }
         });
     }
 
-    private void performHealthcheck(Deployment d) {
+    private boolean triggerHealthcheck(Deployment d) {
         Host host = hostRepository.findById(d.getHostId()).orElse(null);
-        if (host == null) return;
+        if (host == null) return false;
 
         String url = host.getHealthcheckUrl();
-        if (url == null || url.isBlank()) {
-            if (host.getDomain() == null || host.getDomain().isBlank()) return;
-            url = "https://{domain}";
+        if ((url == null || url.isBlank()) && (host.getDomain() == null || host.getDomain().isBlank())) {
+            return false;
         }
-        url = ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
-        // Remove single quotes added by ShellUtil.replaceVariables for URL
-        url = url.replace("'", "");
 
-        log.info("[Healthcheck] Checking {} for deployment {}", url, d.getId());
-        broadcastLog(d.getId(), "\n[SYSTEM] Lancement du healthcheck sur " + url + "...\n");
+        CompletableFuture.runAsync(() -> performHealthcheck(d));
+        return true;
+    }
 
+    private void performHealthcheck(Deployment d) {
         try {
+            Host host = hostRepository.findById(d.getHostId()).orElse(null);
+            if (host == null) return;
+
+            String url = host.getHealthcheckUrl();
+            if (url == null || url.isBlank()) {
+                url = "https://{domain}";
+            }
+            url = ShellUtil.replaceVariables(url, host.getName(), host.getIp(), host.getDomain());
+            // Remove single quotes added by ShellUtil.replaceVariables for URL
+            url = url.replace("'", "");
+
+            log.info("[Healthcheck] Checking {} for deployment {}", url, d.getId());
+            broadcastLog(d.getId(), "\n[SYSTEM] Lancement du healthcheck sur " + url + "...\n");
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .GET()
@@ -244,6 +260,9 @@ public class DeploymentService {
             String msg = "[SYSTEM] Healthcheck ERREUR: " + e.getMessage();
             log.error(msg);
             appendLogAndNotify(d, msg);
+        } finally {
+            broadcastLog(d.getId(), null);
+            closeEmitters(d.getId());
         }
     }
 

@@ -18,6 +18,7 @@ import fr.arthurbr02.deploymanager.service.AppConfigService;
 import fr.arthurbr02.deploymanager.service.DeploymentService;
 import fr.arthurbr02.deploymanager.service.HostService;
 import fr.arthurbr02.deploymanager.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -43,8 +44,10 @@ public class McpController {
     // Map to store SSE emitters by session ID
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    @GetMapping("/mcp/sse")
-    public SseEmitter establishSse(@RequestParam(required = false) String sessionId) {
+    @GetMapping(value = "/mcp/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter establishSse(@RequestParam(required = false) String sessionId, HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
         checkMcpEnabled();
         String id = sessionId != null ? sessionId : UUID.randomUUID().toString();
         SseEmitter emitter = new SseEmitter(3600_000L); // 1 hour timeout

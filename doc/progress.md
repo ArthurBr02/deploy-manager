@@ -150,3 +150,4 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Documentation : Mise à jour du guide de déploiement (README) pour la configuration explicite du répertoire de logs en production.
 - [x] Backend : Activation des logs applicatifs dans un fichier (`deploy-manager.log`) via la configuration Spring Boot.
 - [x] Correction du fuseau horaire : Passage de `LocalDateTime` à `Instant` dans tout le backend pour assurer un affichage correct (UTC -> Local) dans le frontend.
+- [x] Correctif SSE : Résolution de la saturation des connexions (limite navigateur de 6) via l'utilisation de `sse-token` à usage unique, la fermeture systématique des flux sur erreur (`onerror`) et le maintien du flux jusqu'à la fin du healthcheck asynchrone.

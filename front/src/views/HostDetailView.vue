@@ -213,6 +213,8 @@ import { useToastStore } from '@/stores/toast'
 import hostsService from '@/services/hostsService'
 import deploymentsService from '@/services/deploymentsService'
 import adminSettingsService from '@/services/adminSettingsService'
+import { useDeploymentEvents } from '@/composables/useDeploymentEvents'
+import axios from '@/api/axios'
 import { formatAnsi } from '@/utils/ansi'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
@@ -269,30 +271,27 @@ export default {
         adminSettingsService.get().then(res => {
           this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
         }).catch(() => {})
-        const src = new EventSource(`/api/deployments/events?token=${this.accessToken}`)
-        src.addEventListener('deployment.status', e => {
-          try {
-            const { hostId, deploymentId, status } = JSON.parse(e.data)
-            if (hostId !== this.$route.params.id) return
-            this.loadHost()
-            if (status === 'IN_PROGRESS') {
-              if (this.currentDeploymentId !== deploymentId) {
-                this.logContent = ''
-                this.activeTab = 'logs'
-                this.startSse(deploymentId)
-              }
-            } else {
-              this.loadHistory()
+        
+        this._events = useDeploymentEvents(e => {
+          if (e.hostId !== this.$route.params.id) return
+          this.loadHost()
+          if (e.status === 'IN_PROGRESS') {
+            if (this.currentDeploymentId !== e.deploymentId) {
+              this.logContent = ''
+              this.activeTab = 'logs'
+              this.startSse(e.deploymentId)
             }
-          } catch {}
+          } else {
+            this.loadHistory()
+          }
         })
-        this._eventSrc = src
+        this._events.connect()
       })
   },
   unmounted() {
     this._destroyed = true
     if (this._sseSource) this._sseSource.close()
-    if (this._eventSrc) this._eventSrc.close()
+    if (this._events) this._events.disconnect()
     if (this._tlogSse) this._tlogSse.close()
   },
   methods: {
@@ -303,42 +302,50 @@ export default {
       if (this._tlogSse) this._tlogSse.close()
       this.tlogActive = true
       this._tlogEnded = false
-      const url = hostsService.getTlogStreamUrl(this.$route.params.id, this.accessToken)
-      const src = new EventSource(url)
+      
+      axios.post('/deployments/sse-token').then(({ data }) => {
+        if (this._destroyed || !this.tlogActive) return
+        const token = data.token
+        const url = hostsService.getTlogStreamUrl(this.$route.params.id, token)
+        const src = new EventSource(url)
 
-      src.addEventListener('log', e => {
-        this.tlogLines.push(e.data)
-        if (this.tlogLines.length > 500) this.tlogLines.shift()
-        this.$nextTick(() => {
-          if (this.$refs.tlogEl) this.$refs.tlogEl.scrollTop = this.$refs.tlogEl.scrollHeight
+        src.addEventListener('log', e => {
+          this.tlogLines.push(e.data)
+          if (this.tlogLines.length > 500) this.tlogLines.shift()
+          this.$nextTick(() => {
+            if (this.$refs.tlogEl) this.$refs.tlogEl.scrollTop = this.$refs.tlogEl.scrollHeight
+          })
         })
-      })
 
-      // Fin propre du flux (processus terminé côté serveur)
-      src.addEventListener('end', () => {
-        this._tlogEnded = true
-        src.close()
-        this._tlogSse = null
+        // Fin propre du flux (processus terminé côté serveur)
+        src.addEventListener('end', () => {
+          this._tlogEnded = true
+          src.close()
+          this._tlogSse = null
+          this.tlogActive = false
+        })
+
+        // Événement SSE "error" envoyé explicitement par le serveur (distinct des erreurs réseau)
+        src.addEventListener('appError', e => {
+          this.tlogLines.push(`[ERREUR] ${e.data}`)
+          this._tlogEnded = true
+          src.close()
+          this._tlogSse = null
+          this.tlogActive = false
+        })
+
+        // Erreur réseau / connexion perdue — ne pas déclencher si le flux s'est déjà fermé proprement
+        src.onerror = () => {
+          if (this._tlogEnded || src.readyState === EventSource.CLOSED) return
+          this.stopTlog()
+          this.toastStore.error('Connexion au flux de logs applicatifs perdue')
+        }
+
+        this._tlogSse = src
+      }).catch(() => {
         this.tlogActive = false
+        this.toastStore.error('Impossible de démarrer le flux de logs')
       })
-
-      // Événement SSE "error" envoyé explicitement par le serveur (distinct des erreurs réseau)
-      src.addEventListener('appError', e => {
-        this.tlogLines.push(`[ERREUR] ${e.data}`)
-        this._tlogEnded = true
-        src.close()
-        this._tlogSse = null
-        this.tlogActive = false
-      })
-
-      // Erreur réseau / connexion perdue — ne pas déclencher si le flux s'est déjà fermé proprement
-      src.onerror = () => {
-        if (this._tlogEnded || src.readyState === EventSource.CLOSED) return
-        this.stopTlog()
-        this.toastStore.error('Connexion au flux de logs perdue')
-      }
-
-      this._tlogSse = src
     },
     stopTlog() {
       if (this._tlogSse) this._tlogSse.close()
@@ -355,9 +362,9 @@ export default {
       return deploymentsService.getHistory(this.$route.params.id).then(res => {
         this.deploymentHistory = res.data.content
         const inProgress = this.deploymentHistory.find(d => d.status === 'IN_PROGRESS')
-        if (inProgress) {
+        if (inProgress && this.activeTab === 'logs' && this.currentDeploymentId !== inProgress.id) {
           this.startSse(inProgress.id)
-        } else {
+        } else if (!inProgress) {
           this.currentDeploymentId = null
           this.activeDeployment = null
           if (!this.viewedDeployment && this.deploymentHistory.length) {
@@ -383,20 +390,36 @@ export default {
       this.activeDeployment = { id: deploymentId }
       this.viewedDeployment = null
       if (this._sseSource) this._sseSource.close()
-      const src = new EventSource(`/api/deployments/${deploymentId}/logs?token=${this.accessToken}`)
-      src.addEventListener('log', e => {
-        this.logContent += e.data
-        this.$nextTick(() => {
-          if (this.$refs.logEl) this.$refs.logEl.scrollTop = this.$refs.logEl.scrollHeight
+      this._sseEnded = false
+
+      axios.post('/deployments/sse-token').then(({ data }) => {
+        if (this._destroyed || this.currentDeploymentId !== deploymentId) return
+        const token = data.token
+        const src = new EventSource(`/api/deployments/${deploymentId}/logs?token=${token}`)
+        
+        src.addEventListener('log', e => {
+          this.logContent += e.data
+          this.$nextTick(() => {
+            if (this.$refs.logEl) this.$refs.logEl.scrollTop = this.$refs.logEl.scrollHeight
+          })
         })
+        
+        src.addEventListener('end', () => {
+          this._sseEnded = true
+          src.close()
+          this.activeDeployment = null
+          this.loadHistory()
+          this.loadHost()
+        })
+
+        src.onerror = () => {
+          if (this._sseEnded || src.readyState === EventSource.CLOSED) return
+          src.close()
+          this._sseSource = null
+        }
+
+        this._sseSource = src
       })
-      src.addEventListener('end', () => {
-        src.close()
-        this.activeDeployment = null
-        this.loadHistory()
-        this.loadHost()
-      })
-      this._sseSource = src
     },
     cancelDeployment() {
       if (!this.currentDeploymentId) return
