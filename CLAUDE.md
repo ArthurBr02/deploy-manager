@@ -23,6 +23,7 @@ Ce fichier fournit le contexte et les règles pour travailler sur le projet **De
 5. **Gestion des variables** : Toujours vérifier que `{host}`, `{ip}`, `{domain}` sont correctement remplacés dans les commandes avant l'exécution.
 6. **Documentation** : Les spécifications se trouvent dans `doc/specs-claude.md`. Le plan d'implémentation est dans `plan/plan_implementation_deploy_manager.md`.
 7. **Swagger / OpenAPI** : Mettre à jour systématiquement les annotations OpenAPI/Swagger lors de la création ou de la modification d'un endpoint de l'API.
+8. **README** : Mettre à jour `README.md` à chaque ajout ou modification d'une fonctionnalité : nouvelles routes API, nouveaux champs d'entité, nouvelles variables d'environnement ou clés de configuration, nouvelles permissions, ou changement de comportement visible.
 
 ## Workflow de développement
 - Travailler par incréments (Sprint) tels que définis dans le plan d'implémentation.

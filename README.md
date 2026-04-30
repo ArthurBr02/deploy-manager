@@ -37,9 +37,11 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - Interface terminal interactive (xterm.js) directement dans le navigateur
 - Connexion WebSocket (`/ws/terminal`) avec authentification JWT
 - Permission dédiée `can_execute` par hôte et par utilisateur
+- Journalisation optionnelle des commandes saisies dans l'audit log (activable via `audit_terminal_commands`)
 
 ### Sécurité
 - Authentification JWT (access 15 min + refresh 7 jours, rotation automatique)
+- Réinitialisation de mot de passe par e-mail (lien tokenisé)
 - Personal Access Tokens (PAT) hachés en Argon2, affichés une seule fois à la création
 - SSE protégés par tokens à usage unique
 - Injection shell bloquée : les variables sont systématiquement entre quotes avec échappement
@@ -48,15 +50,16 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 ### Administration
 - CRUD utilisateurs (génération de mot de passe, gestion des rôles, avatar)
 - Page de détail utilisateur complète avec son historique de déploiements et son journal d'audit filtré
-- CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_execute`)
-- **Dumps SQL** : téléchargement direct du fichier dump si présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs) ; activable/désactivable par hôte et nom de fichier configurable
+- CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_edit`, `can_execute`, `can_dump`)
+- Configuration SSH par hôte (utilisateur et port personnalisables)
+- **Dumps SQL** : génération à la demande via une commande configurable, téléchargement direct si le fichier est présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs) ; activable/désactivable par hôte, nom de fichier et dossier configurables, permission `can_dump` par utilisateur
 - Import de fichier Ansible `hosts-all` (parsing et mise à jour conditionnelle)
-- Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, shell, OS)
-- **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email)
+- Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, shell, OS, journalisation des commandes terminal)
+- **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email), diff champ par champ, regroupement des sessions terminal par `context_id`
 - **Notifications externes** : webhook Discord/Slack déclenché automatiquement sur les déploiements en échec
 
 ### Historique & Monitoring
-- Historique des déploiements paginé avec filtres (hôte, statut, type)
+- Historique des déploiements paginé avec filtres (hôte, utilisateur, statut, type)
 - Statistiques des déploiements sur une période glissante
 - Export CSV de l'historique
 - Notifications toast en temps réel (SSE events) à la fin de chaque déploiement
@@ -303,10 +306,16 @@ Copiez `.env.example` en `.env` et adaptez les valeurs.
 | `JWT_REFRESH_SECRET` | *(valeur de dev)* | Secret refresh token — **changer en prod** |
 | `JWT_ACCESS_EXPIRY` | `15m` | Durée de vie access token |
 | `JWT_REFRESH_EXPIRY` | `7d` | Durée de vie refresh token |
+| `COOKIE_SECURE` | `false` | Marquer les cookies JWT comme Secure (HTTPS) — mettre `true` en prod |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Origines autorisées pour le CORS |
 | `ADMIN_EMAIL` | `admin@example.com` | Email du premier admin |
 | `ADMIN_PASSWORD` | `Admin1234!` | Mot de passe du premier admin |
 | `LOG_DIR` | `./logs/deployments` | Répertoire des fichiers de logs |
 | `FRONTEND_PORT` | `3000` | Port exposé du frontend (Docker) |
+| `SMTP_HOST` | *(vide)* | Serveur SMTP pour les e-mails (reset mdp, dump request) |
+| `SMTP_PORT` | `587` | Port SMTP |
+| `SMTP_USERNAME` | *(vide)* | Identifiant SMTP |
+| `SMTP_PASSWORD` | *(vide)* | Mot de passe SMTP |
 
 Les paramètres suivants sont configurables dans l'interface d'administration (`/admin/settings`) et stockés en base de données :
 
@@ -317,6 +326,7 @@ Les paramètres suivants sont configurables dans l'interface d'administration (`
 | `default_dump_folder` | `/var/www/dumps` | Dossier par défaut pour les dumps SQL sur le backend |
 | `notification_enabled` | `false` | Activer les notifications webhook |
 | `notification_webhook_url` | *(vide)* | URL du webhook Discord ou Slack |
+| `audit_terminal_commands` | `false` | Journaliser les commandes saisies dans le terminal SSH |
 
 ---
 
@@ -328,17 +338,18 @@ deploy-manager/
 │   ├── src/main/java/fr/arthurbr02/deploymanager/
 │   │   ├── config/        # Sécurité, OpenAPI, Async, WebSocket, Cleanup
 │   │   ├── controller/    # AuthController, HostController, DeploymentController,
-│   │   │                  # AuditController, McpController...
+│   │   │                  # AuditController, McpController, PersonalAccessTokenController...
 │   │   ├── service/       # Logique métier (DeploymentService, HostService,
 │   │   │                  # AuditService, NotificationService, TerminalHandler...)
-│   │   ├── entity/        # Entités JPA (User, Host, Deployment, AuditLog...)
+│   │   ├── entity/        # Entités JPA (User, Host, Deployment, AuditLog,
+│   │   │                  # PersonalAccessToken, UserHostPermission...)
 │   │   ├── repository/    # Repositories Spring Data
 │   │   ├── dto/           # DTOs requête/réponse
 │   │   ├── security/      # JwtUtil, JwtAuthFilter
 │   │   └── enums/         # Role, DeploymentStatus, DeploymentType
 │   └── src/main/resources/
 │       ├── application.yml
-│       └── db/migration/  # Migrations Flyway (V1 → V13)
+│       └── db/migration/  # Migrations Flyway (V1 → V18)
 ├── front/                 # Frontend Vue.js
 │   └── src/
 │       ├── api/           # Axios + intercepteur refresh
@@ -394,6 +405,7 @@ deploy-manager/
 | `DELETE` | `/api/admin/hosts/{id}` | Supprimer un hôte *(admin, soft delete)* |
 | `GET` | `/api/hosts/{id}/tlog` | Stream SSE des logs applicatifs |
 | `GET` | `/api/hosts/{id}/dump` | Télécharger le dump SQL de l'hôte |
+| `POST` | `/api/hosts/{id}/dump/generate` | Générer un dump SQL via commande *(canDump)* |
 | `POST` | `/api/hosts/{id}/dump-request` | Demander un dump SQL aux admins (Email) |
 | `POST` | `/api/admin/hosts/import` | Import Ansible hosts-all *(admin)* |
 | `GET` | `/api/admin/users/{userId}/permissions` | Permissions d'un utilisateur *(admin)* |
@@ -423,6 +435,7 @@ deploy-manager/
 | `PUT` | `/api/admin/settings` | Modifier les paramètres *(admin)* |
 | `GET` | `/api/admin/audit` | Logs d'audit paginés *(admin)* |
 | `GET` | `/api/admin/audit/user/{userId}` | Logs d'audit filtrés par utilisateur *(admin)* |
+| `GET` | `/api/admin/audit/{id}` | Détail d'un log d'audit avec diff *(admin)* |
 
 ### Terminal & MCP
 | Méthode | Route | Description |
@@ -500,5 +513,18 @@ Chaque hôte peut définir des commandes spécifiques pour chaque type d'opérat
 | `healthcheckUrl` | VARCHAR | URL vérifiée après un déploiement réussi (défaut : `https://{domain}`) |
 | `dumpEnabled` | BOOLEAN | Activer/désactiver la gestion des dumps SQL pour cet hôte (défaut : `true`) |
 | `dumpFilename` | VARCHAR | Nom du fichier dump attendu sur le serveur (défaut : `{host}.sql`) |
+| `dumpFolder` | VARCHAR | Dossier contenant le dump sur le serveur (surcharge `default_dump_folder`) |
+| `dumpCommand` | TEXT | Commande exécutée pour générer le dump SQL à la demande |
+| `sshUser` | VARCHAR | Utilisateur SSH (défaut : `root`) |
+| `sshPort` | INTEGER | Port SSH (défaut : `22`) |
 
 Exemple : `sh /root/{host}/liv.sh` → `sh /root/vpn/liv.sh`
+
+## Permissions utilisateur par hôte
+
+| Permission | Description |
+|---|---|
+| `can_deploy` | Autoriser l'utilisateur à lancer des déploiements sur cet hôte |
+| `can_edit` | Autoriser l'utilisateur à modifier la configuration de l'hôte |
+| `can_execute` | Autoriser l'utilisateur à ouvrir un terminal SSH sur cet hôte |
+| `can_dump` | Autoriser l'utilisateur à générer et télécharger des dumps SQL |
