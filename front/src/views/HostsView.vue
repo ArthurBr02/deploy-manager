@@ -6,8 +6,13 @@
       <div class="flex-1 sm:hidden"></div>
       <div class="relative flex-1 sm:flex-none">
         <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input v-model="search" placeholder="Rechercher..." class="w-full sm:w-52 pl-8 pr-3 py-1.5 text-sm border border-warm-border rounded-md outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+        <input v-model="filters.search" placeholder="Rechercher..." class="w-full sm:w-52 pl-8 pr-3 py-1.5 text-sm border border-warm-border rounded-md outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
       </div>
+      <select v-model="filters.sortBy" class="hidden xs:block border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent bg-white">
+        <option value="name">Trier par Nom</option>
+        <option value="ip">Trier par IP</option>
+        <option value="status">Trier par Statut</option>
+      </select>
       <RouterLink v-if="authStore.isAdmin" to="/admin/hosts/new">
         <button class="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
           <PlusIcon class="w-3.5 h-3.5" /> <span class="hidden xs:inline">Nouvel hôte</span>
@@ -59,6 +64,7 @@ import { useDeploymentEvents } from '@/composables/useDeploymentEvents'
 import HostCard from '@/components/HostCard.vue'
 import DeployModal from '@/components/DeployModal.vue'
 import { SearchIcon, PlusIcon, ServerIcon } from '@/components/icons'
+import { syncQuery } from '@/utils/query'
 
 export default {
   components: { HostCard, DeployModal, SearchIcon, PlusIcon, ServerIcon },
@@ -66,21 +72,38 @@ export default {
     ...mapStores(useAuthStore, useToastStore),
     ...mapState(useAuthStore, ['accessToken']),
     filtered() {
-      return this.hosts.filter(h =>
-        h.name?.toLowerCase().includes(this.search.toLowerCase()) || h.ip?.includes(this.search)
+      let result = this.hosts.filter(h =>
+        h.name?.toLowerCase().includes(this.filters.search.toLowerCase()) || h.ip?.includes(this.filters.search)
       )
+      
+      const sort = this.filters.sortBy
+      result.sort((a, b) => {
+        if (sort === 'ip') return (a.ip || '').localeCompare(b.ip || '')
+        if (sort === 'status') return (a.lastDeploymentStatus || '').localeCompare(b.lastDeploymentStatus || '')
+        return (a.name || '').localeCompare(b.name || '')
+      })
+      
+      return result
     },
   },
   data() {
     return {
       hosts: [],
       loading: true,
-      search: '',
+      filters: {
+        search: '',
+        sortBy: 'name'
+      },
       modal: { show: false, host: null, type: 'DEPLOY', defaultTimeout: 10 },
       defaultDeployCommand: '',
     }
   },
   mounted() {
+    syncQuery(this, {
+      key: 'hosts_list',
+      defaultFilters: { search: '', sortBy: 'name' },
+      onUpdate: () => {}
+    })
     this.load()
     adminSettingsService.get().then(res => {
       this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''

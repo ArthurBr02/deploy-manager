@@ -3,6 +3,10 @@
     <header class="h-14 border-b border-warm-border bg-white flex items-center px-4 lg:px-6 gap-4 flex-shrink-0">
       <h1 class="text-base font-semibold text-gray-900">Utilisateurs</h1>
       <div class="flex-1" />
+      <div class="relative">
+        <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <input v-model="filters.search" placeholder="Rechercher..." class="w-full sm:w-52 pl-8 pr-3 py-1.5 text-sm border border-warm-border rounded-md outline-none focus:border-accent" />
+      </div>
       <button @click="showCreate = true" class="flex items-center gap-1.5 bg-accent text-white px-3 py-1.5 rounded-md text-sm hover:bg-accent-hover">
         <PlusIcon class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Nouvel utilisateur</span>
       </button>
@@ -10,6 +14,9 @@
     <div class="flex-1 overflow-auto p-4 lg:p-6">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div v-else-if="!filtered.length" class="text-center py-20 border-2 border-dashed border-warm-border rounded-xl text-gray-400">
+        <p>{{ filters.search ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur' }}</p>
       </div>
       <div v-else class="bg-white border border-warm-border rounded-xl overflow-x-auto">
         <table class="w-full text-sm min-w-[600px]">
@@ -23,7 +30,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="u in users" :key="u.id" class="border-b border-warm-border/50 hover:bg-warm-muted/40">
+            <tr v-for="u in filtered" :key="u.id" class="border-b border-warm-border/50 hover:bg-warm-muted/40">
               <td class="py-3 px-4">
                 <UserBadge :user="u" />
               </td>
@@ -97,13 +104,27 @@
 import { mapStores } from 'pinia'
 import { useToastStore } from '@/stores/toast'
 import adminUsersService from '@/services/adminUsersService'
-import { PlusIcon, EditIcon, TrashIcon } from '@/components/icons'
+import { PlusIcon, EditIcon, TrashIcon, SearchIcon } from '@/components/icons'
 import UserBadge from '@/components/UserBadge.vue'
+import { syncQuery } from '@/utils/query'
 
 export default {
-  components: { PlusIcon, EditIcon, TrashIcon, UserBadge },
+  components: { PlusIcon, EditIcon, TrashIcon, SearchIcon, UserBadge },
   computed: {
     ...mapStores(useToastStore),
+    filtered() {
+      return this.users
+        .filter(u =>
+          u.firstName?.toLowerCase().includes(this.filters.search.toLowerCase()) ||
+          u.lastName?.toLowerCase().includes(this.filters.search.toLowerCase()) ||
+          u.email?.toLowerCase().includes(this.filters.search.toLowerCase())
+        )
+        .sort((a, b) => {
+          const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase()
+          const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase()
+          return nameA.localeCompare(nameB, 'fr')
+        })
+    }
   },
   data() {
     return {
@@ -114,9 +135,15 @@ export default {
       createError: '',
       createdUser: null,
       newUser: { firstName: '', lastName: '', email: '', role: 'USER' },
+      filters: { search: '' }
     }
   },
   mounted() {
+    syncQuery(this, {
+      key: 'users_list',
+      defaultFilters: { search: '' },
+      onUpdate: () => {}
+    })
     this.load()
   },
   methods: {

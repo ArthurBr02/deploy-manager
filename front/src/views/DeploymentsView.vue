@@ -65,9 +65,9 @@
         <span v-if="stats">{{ paginationLabel }}</span>
         <span v-else></span>
         <div v-if="total > 1" class="flex items-center gap-1">
-          <button @click="page--" :disabled="page === 0" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-white hover:bg-warm-muted disabled:opacity-40">←</button>
-          <span class="px-2 text-sm text-gray-500 whitespace-nowrap">Page <strong>{{ page + 1 }}</strong> / {{ total }}</span>
-          <button @click="page++" :disabled="page >= total - 1" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-40">→</button>
+          <button @click="filters.page--" :disabled="filters.page === 0" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-white hover:bg-warm-muted disabled:opacity-40">←</button>
+          <span class="px-2 text-sm text-gray-500 whitespace-nowrap">Page <strong>{{ filters.page + 1 }}</strong> / {{ total }}</span>
+          <button @click="filters.page++" :disabled="filters.page >= total - 1" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-40">→</button>
         </div>
       </div>
     </div>
@@ -82,6 +82,7 @@ import hostsService from '@/services/hostsService'
 import DeploymentTable from '@/components/DeploymentTable.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import { SearchIcon, DownloadIcon } from '@/components/icons'
+import { syncQuery } from '@/utils/query'
 
 export default {
   components: { DeploymentTable, DeploymentLogsModal, SearchIcon, DownloadIcon },
@@ -91,11 +92,17 @@ export default {
       hosts: [],
       loading: false,
       logsModal: { deployment: null },
-      page: 0,
       total: 1,
       totalElements: 0,
       stats: null,
-      filters: { search: '', hostId: '', status: '', type: '', period: '7d' },
+      filters: { 
+        search: '', 
+        hostId: '', 
+        status: '', 
+        type: '', 
+        period: '7d',
+        page: 0
+      },
       statuses: [
         { value: 'SUCCESS', label: 'Succès' },
         { value: 'FAILURE', label: 'Échec' },
@@ -110,8 +117,8 @@ export default {
       return map[this.filters.period] ?? ''
     },
     paginationLabel() {
-      const from = this.page * 20 + 1
-      const to = Math.min((this.page + 1) * 20, this.totalElements)
+      const from = this.filters.page * 20 + 1
+      const to = Math.min((this.filters.page + 1) * 20, this.totalElements)
       return `${from} – ${to} sur ${this.totalElements}`
     },
     statsCards() {
@@ -123,14 +130,15 @@ export default {
       ]
     },
   },
-  watch: {
-    page() { this.load(); this.loadStats() },
-    filters: {
-      deep: true,
-      handler() { this.page = 0; this.load(); this.loadStats() },
-    },
-  },
   mounted() {
+    syncQuery(this, {
+      key: 'deployments',
+      defaultFilters: { search: '', hostId: '', status: '', type: '', period: '7d', page: 0 },
+      onUpdate: () => {
+        this.load()
+        this.loadStats()
+      }
+    })
     this.load()
     this.loadStats()
     this.loadHosts()
@@ -138,7 +146,7 @@ export default {
   methods: {
     load() {
       this.loading = true
-      const params = { page: this.page, size: 20 }
+      const params = { page: this.filters.page, size: 20 }
       if (this.filters.search) params.search = this.filters.search
       if (this.filters.hostId) params.hostId = this.filters.hostId
       if (this.filters.status) params.status = this.filters.status
@@ -176,7 +184,7 @@ export default {
       this.filters.status = ''
       this.filters.type = ''
       this.filters.period = '7d'
-      this.page = 0
+      this.filters.page = 0
     },
     viewDeployment(dep) {
       this.logsModal.deployment = dep

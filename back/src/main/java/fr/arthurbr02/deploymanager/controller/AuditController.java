@@ -32,9 +32,13 @@ public class AuditController {
     @GetMapping
     @Operation(summary = "Lister les logs d'audit (admin)")
     public ResponseEntity<Page<AuditLogResponse>> list(
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) String entityName,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(auditService.findAll(page, size));
+        return ResponseEntity.ok(auditService.findAll(userId, entityName, action, search, page, size));
     }
 
     @GetMapping("/user/{userId}")

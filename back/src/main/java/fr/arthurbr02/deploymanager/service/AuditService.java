@@ -2,23 +2,26 @@ package fr.arthurbr02.deploymanager.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.arthurbr02.deploymanager.dto.audit.AuditLogResponse;
 import fr.arthurbr02.deploymanager.entity.AuditLog;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.AuditLogRepository;
+import fr.arthurbr02.deploymanager.repository.UserRepository;
+import fr.arthurbr02.deploymanager.util.AuditConstants;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-
-import fr.arthurbr02.deploymanager.dto.audit.AuditLogResponse;
-import fr.arthurbr02.deploymanager.repository.UserRepository;
-import fr.arthurbr02.deploymanager.util.AuditConstants;
 
 @Service
 @RequiredArgsConstructor
@@ -58,8 +61,37 @@ public class AuditService {
         auditLogRepository.save(entry);
     }
 
+    public Page<AuditLogResponse> findAll(UUID userId, String entityName, String action, String search, int page, int size) {
+        Specification<AuditLog> spec = buildSpec(userId, entityName, action, search);
+        return auditLogRepository.findAll(spec, PageRequest.of(page, size)).map(this::toResponse);
+    }
+
+    private Specification<AuditLog> buildSpec(UUID userId, String entityName, String action, String search) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (userId != null) predicates.add(cb.equal(root.get("userId"), userId));
+            if (entityName != null && !entityName.isBlank()) predicates.add(cb.equal(root.get("entityName"), entityName));
+            if (action != null && !action.isBlank()) predicates.add(cb.equal(root.get("action"), action));
+            
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("oldValue")), pattern),
+                    cb.like(cb.lower(root.get("newValue")), pattern),
+                    cb.like(cb.lower(root.get("entityId").as(String.class)), pattern)
+                ));
+            }
+
+            // Always sort by createdAt DESC
+            query.orderBy(cb.desc(root.get("createdAt")));
+            
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     public Page<AuditLogResponse> findAll(int page, int size) {
-        return auditLogRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size)).map(this::toResponse);
+        return findAll(null, null, null, null, page, size);
     }
 
     public Page<AuditLogResponse> findByUserId(UUID userId, int page, int size) {

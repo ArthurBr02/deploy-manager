@@ -98,6 +98,11 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Refonte de la page de détail utilisateur (Historique des déploiements et logs d'audit filtrés)
 - [x] Système de notifications externes (Webhooks Discord/Slack)
 
+### Sprint 17 : Expérience Utilisateur et Persistence
+- [x] Système de tris et filtres persistants (URL + localStorage) sur toutes les listes
+- [x] Amélioration du filtrage des logs d'audit côté backend (par utilisateur, entité, action et recherche)
+- [x] Ajout de filtres de recherche pour la gestion des droits d'accès par utilisateur
+
 ### Sprint 17 : Terminal SSH Web
 - [x] Permission `can_execute` sur les hôtes
 - [x] Backend : Intégration WebSocket et gestion session SSH

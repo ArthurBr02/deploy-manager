@@ -3,7 +3,42 @@
     <header class="h-14 border-b border-warm-border bg-white flex items-center px-6 gap-4 flex-shrink-0">
       <h1 class="text-base font-semibold text-gray-900">Logs d'audit</h1>
     </header>
-    <div class="flex-1 overflow-auto p-4 lg:p-6">
+    <div class="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
+      <!-- Filters -->
+      <div class="bg-white border border-warm-border rounded-xl px-4 py-3 flex flex-wrap gap-2.5 items-center">
+        <div class="relative min-w-full sm:min-w-52 flex-1">
+          <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <input
+            v-model="filters.search"
+            class="w-full border border-warm-border rounded-md pl-8 pr-3 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            placeholder="Rechercher (ID, snapshots…)"
+          />
+        </div>
+        <select v-model="filters.userId" class="flex-1 sm:flex-none border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent max-w-[200px]">
+          <option value="">Tous les utilisateurs</option>
+          <option v-for="u in usersList" :key="u.id" :value="u.id">{{ u.firstName }} {{ u.lastName }}</option>
+        </select>
+        <select v-model="filters.entityName" class="flex-1 sm:flex-none border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent">
+          <option value="">Toutes les entités</option>
+          <option value="Host">Hôtes</option>
+          <option value="User">Utilisateurs</option>
+          <option value="Terminal">Terminal</option>
+          <option value="UserHostPermission">Permissions</option>
+          <option value="AppConfig">Paramètres</option>
+        </select>
+        <select v-model="filters.action" class="flex-1 sm:flex-none border border-warm-border rounded-md px-2 py-1.5 text-sm outline-none focus:border-accent">
+          <option value="">Toutes les actions</option>
+          <option value="CREATE">Création</option>
+          <option value="UPDATE">Modification</option>
+          <option value="DELETE">Suppression</option>
+          <option value="TERMINAL_CONNECT">Connexion SSH</option>
+          <option value="TERMINAL_COMMAND">Commande SSH</option>
+        </select>
+        <button @click="resetFilters" class="w-full sm:w-auto px-3 py-1.5 border border-warm-border rounded-md text-sm bg-white hover:bg-warm-muted text-gray-500">
+          Réinitialiser
+        </button>
+      </div>
+
       <div v-if="loading && !logs.length" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
@@ -153,14 +188,14 @@
       </div>
 
       <div v-if="totalPages > 1" class="mt-4 flex justify-between items-center text-sm text-gray-500">
-        <span>Page {{ page + 1 }} sur {{ totalPages }}</span>
+        <span>Page {{ filters.page + 1 }} sur {{ totalPages }}</span>
         <div class="flex gap-2">
-          <button @click="prevPage" :disabled="page === 0"
-            class="px-3 py-1 border border-warm-border rounded-md hover:bg-white disabled:opacity-30 transition-colors">
+          <button @click="filters.page--" :disabled="filters.page === 0"
+            class="px-3 py-1.5 border border-warm-border rounded-md bg-white hover:bg-warm-muted disabled:opacity-30 transition-colors">
             Précédent
           </button>
-          <button @click="nextPage" :disabled="page >= totalPages - 1"
-            class="px-3 py-1 border border-warm-border rounded-md hover:bg-white disabled:opacity-30 transition-colors">
+          <button @click="filters.page++" :disabled="filters.page >= totalPages - 1"
+            class="px-3 py-1.5 border border-warm-border rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-30 transition-colors">
             Suivant
           </button>
         </div>
@@ -173,8 +208,11 @@
 
 <script>
 import adminAuditService from '@/services/adminAuditService'
+import adminUsersService from '@/services/adminUsersService'
 import UserBadge from '@/components/UserBadge.vue'
 import AuditDetailModal from '@/components/AuditDetailModal.vue'
+import { SearchIcon } from '@/components/icons'
+import { syncQuery } from '@/utils/query'
 
 const ACTION_CLASSES = {
   CREATE: 'bg-green-100 text-green-700',
@@ -198,15 +236,22 @@ const ENTITY_ROUTES = {
 }
 
 export default {
-  components: { UserBadge, AuditDetailModal },
+  components: { UserBadge, AuditDetailModal, SearchIcon },
   data() {
     return {
       logs: [],
+      usersList: [],
       loading: false,
-      page: 0,
       totalPages: 0,
       selectedLog: null,
       expandedGroups: new Set(),
+      filters: {
+        userId: '',
+        entityName: '',
+        action: '',
+        search: '',
+        page: 0
+      }
     }
   },
   computed: {
@@ -239,7 +284,13 @@ export default {
     }
   },
   mounted() {
+    syncQuery(this, {
+      key: 'audit_logs',
+      defaultFilters: { userId: '', entityName: '', action: '', search: '', page: 0 },
+      onUpdate: () => this.load()
+    })
     this.load()
+    this.loadUsers()
   },
   methods: {
     toggleGroup(contextId) {
@@ -264,12 +315,32 @@ export default {
     },
     load() {
       this.loading = true
-      adminAuditService.list(this.page).then(res => {
+      const params = { 
+        page: this.filters.page, 
+        size: 20,
+        userId: this.filters.userId || null,
+        entityName: this.filters.entityName || null,
+        action: this.filters.action || null,
+        search: this.filters.search || null
+      }
+      adminAuditService.list(params).then(res => {
         this.logs = res.data.content
         this.totalPages = res.data.totalPages
       }).finally(() => {
         this.loading = false
       })
+    },
+    loadUsers() {
+      adminUsersService.getAll().then(res => {
+        this.usersList = res.data
+      })
+    },
+    resetFilters() {
+      this.filters.userId = ''
+      this.filters.entityName = ''
+      this.filters.action = ''
+      this.filters.search = ''
+      this.filters.page = 0
     },
     openDetail(log) {
       this.selectedLog = log
@@ -299,12 +370,6 @@ export default {
       } catch {
         return str.length > 40 ? str.slice(0, 40) + '…' : str
       }
-    },
-    nextPage() {
-      if (this.page < this.totalPages - 1) { this.page++; this.load() }
-    },
-    prevPage() {
-      if (this.page > 0) { this.page--; this.load() }
     },
   },
 }

@@ -77,16 +77,16 @@
           <!-- Tabs View -->
           <div class="bg-white border border-warm-border rounded-2xl shadow-sm overflow-hidden">
             <div class="border-b border-warm-border flex bg-warm-muted/20 p-1">
-              <button v-for="tab in visibleTabs" :key="tab.id" @click="activeTab = tab.id"
+              <button v-for="tab in visibleTabs" :key="tab.id" @click="filters.activeTab = tab.id"
                 class="flex-1 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all"
-                :class="activeTab === tab.id ? 'bg-white text-accent shadow-sm' : 'text-gray-400 hover:text-gray-600'">
+                :class="filters.activeTab === tab.id ? 'bg-white text-accent shadow-sm' : 'text-gray-400 hover:text-gray-600'">
                 {{ tab.label }}
               </button>
             </div>
 
             <div class="min-h-[400px]">
               <!-- History -->
-              <div v-if="activeTab === 'deployments'" class="animate-in fade-in duration-300">
+              <div v-if="filters.activeTab === 'deployments'" class="animate-in fade-in duration-300">
                 <div v-if="!deploymentsLoading && !deployments.length" class="flex flex-col items-center justify-center py-20 px-10 text-center">
                   <div class="w-16 h-16 bg-warm-muted/50 rounded-full flex items-center justify-center mb-4 border border-dashed border-warm-border">
                     <RocketIcon class="w-8 h-8 text-gray-300" />
@@ -107,23 +107,38 @@
               </div>
 
               <!-- Permissions -->
-              <div v-if="activeTab === 'permissions' && isAdmin" class="divide-y divide-warm-border/50 animate-in fade-in duration-300">
-                <div v-if="!hosts.length" class="p-20 text-center text-gray-400 italic text-sm">Aucun hôte configuré</div>
-                <div v-for="host in hosts" :key="host.id" class="flex items-center gap-4 p-4 hover:bg-warm-muted/20 transition-colors group">
-                  <div class="w-10 h-10 bg-warm-muted/50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                    <ServerIcon class="w-5 h-5" />
+              <div v-if="filters.activeTab === 'permissions' && isAdmin" class="animate-in fade-in duration-300">
+                <!-- Permissions Filters -->
+                <div class="p-4 border-b border-warm-border bg-warm-muted/5 flex flex-wrap gap-2">
+                  <div class="relative flex-1 min-w-[150px]">
+                    <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <input v-model="filters.search" placeholder="Filtrer les hôtes..." class="w-full border border-warm-border rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none focus:border-accent" />
                   </div>
-                  <div class="flex-1">
-                    <div class="font-bold text-sm text-gray-900">{{ host.name }}</div>
-                    <div class="text-[10px] text-gray-400 font-mono tracking-tight">{{ host.ip }}</div>
-                  </div>
-                  <div class="flex gap-3">
-                    <button v-for="p in [{f: 'canDeploy', l: 'Deploy'}, {f: 'canEdit', l: 'Edit'}, {f: 'canExecute', l: 'SSH'}]" :key="p.f"
-                      @click="togglePerm(host.id, p.f, !getPerm(host.id, p.f))"
-                      class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border transition-all"
-                      :class="getPerm(host.id, p.f) ? 'bg-accent border-accent text-white shadow-sm shadow-accent/20' : 'bg-white border-warm-border text-gray-400 hover:border-gray-300'">
-                      {{ p.l }}
-                    </button>
+                  <select v-model="filters.status" class="border border-warm-border rounded-lg px-2 py-1.5 text-xs outline-none focus:border-accent bg-white">
+                    <option value="">Tous les hôtes</option>
+                    <option value="access">Avec accès</option>
+                    <option value="no-access">Sans accès</option>
+                  </select>
+                </div>
+
+                <div class="divide-y divide-warm-border/50">
+                  <div v-if="!filteredHosts.length" class="p-20 text-center text-gray-400 italic text-sm">Aucun hôte trouvé</div>
+                  <div v-for="host in filteredHosts" :key="host.id" class="flex items-center gap-4 p-4 hover:bg-warm-muted/20 transition-colors group">
+                    <div class="w-10 h-10 bg-warm-muted/50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-accent/10 group-hover:text-accent transition-colors">
+                      <ServerIcon class="w-5 h-5" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-sm text-gray-900">{{ host.name }}</div>
+                      <div class="text-[10px] text-gray-400 font-mono tracking-tight">{{ host.ip }}</div>
+                    </div>
+                    <div class="flex gap-3">
+                      <button v-for="p in [{f: 'canDeploy', l: 'Deploy'}, {f: 'canEdit', l: 'Edit'}, {f: 'canExecute', l: 'SSH'}]" :key="p.f"
+                        @click="togglePerm(host.id, p.f, !getPerm(host.id, p.f))"
+                        class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border transition-all"
+                        :class="getPerm(host.id, p.f) ? 'bg-accent border-accent text-white shadow-sm shadow-accent/20' : 'bg-white border-warm-border text-gray-400 hover:border-gray-300'">
+                        {{ p.l }}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -206,14 +221,15 @@ import DeploymentTable from '@/components/DeploymentTable.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
 import { 
   ClipboardIcon, ChevronLeftIcon, ChevronRightIcon, 
-  MailIcon, EditIcon, RocketIcon, ServerIcon, CheckIcon 
+  MailIcon, EditIcon, RocketIcon, ServerIcon, CheckIcon, SearchIcon
 } from '@/components/icons'
+import { syncQuery } from '@/utils/query'
 
 export default {
   components: { 
     UserAvatar, DeploymentTable, DeploymentLogsModal, 
     ClipboardIcon, ChevronLeftIcon, ChevronRightIcon, 
-    MailIcon, EditIcon, RocketIcon, ServerIcon, CheckIcon 
+    MailIcon, EditIcon, RocketIcon, ServerIcon, CheckIcon, SearchIcon
   },
   computed: {
     ...mapStores(useToastStore),
@@ -223,6 +239,21 @@ export default {
     },
     visibleTabs() {
       return this.tabs.filter(t => t.id !== 'permissions' || this.isAdmin)
+    },
+    filteredHosts() {
+      if (!this.hosts) return []
+      return this.hosts.filter(h => {
+        const matchesSearch = !this.filters.search || 
+          h.name?.toLowerCase().includes(this.filters.search.toLowerCase()) || 
+          h.ip?.includes(this.filters.search)
+        
+        const hasAccess = this.getPerm(h.id, 'canDeploy') || this.getPerm(h.id, 'canEdit') || this.getPerm(h.id, 'canExecute')
+        const matchesStatus = this.filters.status === '' || 
+          (this.filters.status === 'access' && hasAccess) || 
+          (this.filters.status === 'no-access' && !hasAccess)
+          
+        return matchesSearch && matchesStatus
+      })
     }
   },
   data() {
@@ -237,7 +268,11 @@ export default {
       saving: false,
       error: '',
       
-      activeTab: 'deployments',
+      filters: {
+        activeTab: 'deployments',
+        search: '',
+        status: '', // '', 'access', 'no-access'
+      },
       tabs: [
         { id: 'deployments', label: 'Historique' },
         { id: 'permissions', label: 'Droits d\'accès' }
@@ -255,6 +290,11 @@ export default {
     }
   },
   mounted() {
+    syncQuery(this, {
+      key: `user_detail_${this.$route.params.id}`,
+      defaultFilters: { activeTab: 'deployments', search: '', status: '' },
+      onUpdate: () => {}
+    })
     this.loadAll()
   },
   methods: {
