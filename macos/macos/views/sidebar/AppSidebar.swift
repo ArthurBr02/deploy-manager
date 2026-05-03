@@ -9,6 +9,11 @@ import SwiftUI
 
 struct AppSidebar: View {
     @Bindable var navManager: NavigationManager
+    
+    @AppStorage("userProfile") var profileData: StorageWrapper<UserProfile> = StorageWrapper(nil)
+    var user: UserProfile? {
+        profileData.value
+    }
 
     var body: some View {
         List(selection: $navManager.selection) {
@@ -22,5 +27,16 @@ struct AppSidebar: View {
             }
         }
         .listStyle(.sidebar)
+        
+        if (user != nil) {
+            Spacer()
+            Divider()
+            
+            HStack {
+                AvatarView(base64String: user!.avatar, size: 20)
+                Text(user!.fullName)
+            }.padding(EdgeInsets.init(top: 10, leading: 0, bottom: 10, trailing: 0))
+        }
+    
     }
 }

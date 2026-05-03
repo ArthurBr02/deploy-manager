@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import NotchKit
 
 struct SettingsView: View {
     @Environment(AppConfig.self) private var settings
@@ -16,6 +17,14 @@ struct SettingsView: View {
     
     private let urlAccount = "server_url" //Pour Keychain
     private let tokenAccount = "api_token" //Pour Keychain
+    
+    @AppStorage("userProfile") var profileData: StorageWrapper<UserProfile> = StorageWrapper(nil)
+    
+    var user: UserProfile? {
+        profileData.value
+    }
+    
+    
     
     var body: some View {
         LayoutView(title: "Réglages") {
@@ -36,13 +45,23 @@ struct SettingsView: View {
                             .frame(width: 150, alignment: .leading).foregroundStyle(.secondary)
                         SecureField("token d'accès personnel", text: $token)
                         Button(action: {
+                            resetUserProfileAppStorage()
+                        }) {
+                            Text("Réinitialiser le profil")
+                        }
+                        Button(action: {
                             saveToKeychain()
                             
                             Task {
                                 do {
+                                    NotchKit.shared.setGlow(.activity)
                                     let profile = try await ProfileService.shared.getProfile()
+                                    updateProfile(newProfile: profile)
                                     print("Connecté en tant que : \(profile.firstName)")
                                     // Ici tu peux mettre à jour ton état "En ligne"
+                                    NotchKit.shared.clearGlow()
+                                    await NotchKit.shared.present(content: Text("Connecté en tant que : \(profile.firstName)"),
+                                                                  priority: NotchPriority.high, duration: 4)
                                 } catch {
                                     print("Échec : \(error)")
                                 }
@@ -170,6 +189,14 @@ struct SettingsView: View {
            let savedToken = String(data: tokenData, encoding: .utf8) {
             self.token = savedToken
         }
+    }
+    
+    func updateProfile(newProfile: UserProfile) {
+        self.profileData = StorageWrapper(newProfile)
+    }
+    
+    private func resetUserProfileAppStorage() {
+        UserDefaults.standard.removeObject(forKey: "userProfile")
     }
 }
 

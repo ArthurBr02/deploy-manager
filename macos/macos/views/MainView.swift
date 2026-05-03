@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import NotchKit
 
 struct MainView: View {
     @State private var navManager = NavigationManager()
@@ -17,6 +18,15 @@ struct MainView: View {
         } detail: {
             AppRouter(selection: navManager.selection)
         }.environment(settings)
+            .onAppear {
+                Task { @MainActor in
+                    NotchKit.shared.configure { config in
+                        config.defaultDismissDelay = 4.0
+                        config.hoverProximity = 25.0
+                    }
+                    NotchKit.shared.start()
+                }
+            }
     }
 }
 

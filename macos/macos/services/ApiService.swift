@@ -89,8 +89,6 @@ class ApiService {
         }
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
-        
-        print(data, response)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ApiError.requestFailed
@@ -98,10 +96,12 @@ class ApiService {
 
         if httpResponse.statusCode == 401 { throw ApiError.unauthorized }
         guard (200..<300).contains(httpResponse.statusCode) else { throw ApiError.requestFailed }
-
+        print(data, T.self)
         do {
-            return try decoder.decode(T.self, from: data.isEmpty ? "{}".data(using: .utf8)! : data)
-        } catch {
+            let finalData = data.isEmpty ? "{}".data(using: .utf8)! : data
+            return try decoder.decode(T.self, from: finalData)
+        } catch let decodingError {
+            print("❌ Erreur de décodage sur \(T.self): \(decodingError)") // <--- TRÈS IMPORTANT
             throw ApiError.decodingError
         }
     }

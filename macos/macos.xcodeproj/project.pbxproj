@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8EBD6A052FA7AEEF00A45E95 /* NotchKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8EBD6A042FA7AEEF00A45E95 /* NotchKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		8EBD69A02FA7664F00A45E95 /* macos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macos.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8EBD6A052FA7AEEF00A45E95 /* NotchKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = macos;
 			packageProductDependencies = (
+				8EBD6A042FA7AEEF00A45E95 /* NotchKit */,
 			);
 			productName = macos;
 			productReference = 8EBD69A02FA7664F00A45E95 /* macos.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 8EBD69972FA7664F00A45E95;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8EBD6A032FA7AEEF00A45E95 /* XCLocalSwiftPackageReference "../../notch-library" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8EBD69A12FA7664F00A45E95 /* Products */;
 			projectDirPath = "";
@@ -347,6 +356,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		8EBD6A032FA7AEEF00A45E95 /* XCLocalSwiftPackageReference "../../notch-library" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../notch-library";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8EBD6A042FA7AEEF00A45E95 /* NotchKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NotchKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8EBD69982FA7664F00A45E95 /* Project object */;
 }
