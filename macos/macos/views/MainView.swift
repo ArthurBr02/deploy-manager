@@ -9,13 +9,14 @@ import SwiftUI
 
 struct MainView: View {
     @State private var navManager = NavigationManager()
+    @State private var settings = AppConfig()
 
     var body: some View {
         NavigationSplitView {
             AppSidebar(navManager: navManager)
         } detail: {
             AppRouter(selection: navManager.selection)
-        }
+        }.environment(settings)
     }
 }
 

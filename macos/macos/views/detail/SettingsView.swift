@@ -9,17 +9,17 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(AppConfig.self) private var settings
     
     @State private var url: String = ""
     @State private var token: String = ""
     
-    @State private var launchAtStartup : Bool = false
+    private let urlAccount = "server_url" //Pour Keychain
+    private let tokenAccount = "api_token" //Pour Keychain
     
     var body: some View {
         LayoutView(title: "Réglages") {
-            Button("Enregistrer") {
-                
-            }
+            
         } content: {
             VStack {
                 CardView(title: "Connexion au serveur", isHoverable: false) {
@@ -35,8 +35,21 @@ struct SettingsView: View {
                         Text("Personal Access Token")
                             .frame(width: 150, alignment: .leading).foregroundStyle(.secondary)
                         SecureField("token d'accès personnel", text: $token)
-                        Button("Tester") {
+                        Button(action: {
+                            saveToKeychain()
                             
+                            Task {
+                                do {
+                                    let profile = try await ProfileService.shared.getProfile()
+                                    print("Connecté en tant que : \(profile.firstName)")
+                                    // Ici tu peux mettre à jour ton état "En ligne"
+                                } catch {
+                                    print("Échec : \(error)")
+                                }
+                            }
+                            
+                        }) {
+                            Text("Connexion")
                         }
                     }
                     
@@ -56,7 +69,7 @@ struct SettingsView: View {
                             
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$launchAtStartup)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -66,7 +79,7 @@ struct SettingsView: View {
                             
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$stopSseWhileSleeping)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -76,7 +89,7 @@ struct SettingsView: View {
                             
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$confirmWithTouchID)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -86,7 +99,7 @@ struct SettingsView: View {
                             
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$automaticReconnection)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -98,7 +111,7 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$notifyOnDeployment)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -108,7 +121,7 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$notifyOnError)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -118,7 +131,7 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$changeColorOnError)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
@@ -128,12 +141,34 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $launchAtStartup)
+                        Toggle("", isOn: settings.$notifyThroughNotch)
                             .toggleStyle(.switch)
                             .labelsHidden().foregroundStyle(.secondary)
                     }
                 }
             }
+        }.onAppear(perform: { loadFromKeychain() })
+    }
+    
+    private func saveToKeychain() {
+        if let urlData = url.data(using: .utf8) {
+            KeychainHelper.standard.save(urlData, account: urlAccount)
+        }
+        if let tokenData = token.data(using: .utf8) {
+            KeychainHelper.standard.save(tokenData, account: tokenAccount)
+        }
+        print("Données sauvegardées en toute sécurité.")
+    }
+
+    private func loadFromKeychain() {
+        if let urlData = KeychainHelper.standard.read(account: urlAccount),
+           let savedUrl = String(data: urlData, encoding: .utf8) {
+            self.url = savedUrl
+        }
+        
+        if let tokenData = KeychainHelper.standard.read(account: tokenAccount),
+           let savedToken = String(data: tokenData, encoding: .utf8) {
+            self.token = savedToken
         }
     }
 }
