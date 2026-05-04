@@ -15,6 +15,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -62,7 +63,7 @@ public class DeploymentService {
     // Map of deploymentId -> list of SSE emitters (log streaming)
     private final Map<UUID, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
     // Global emitters for deployment status events: emitter + allowed host IDs (null = admin, all hosts)
-    private record EventEmitter(SseEmitter emitter, Set<UUID> allowedHostIds) {}
+    private record EventEmitter(SseEmitter emitter, Set<UUID> allowedHostIds, UUID userId) {}
     private final List<EventEmitter> globalEmitters = new CopyOnWriteArrayList<>();
 
     @Transactional
@@ -571,14 +572,50 @@ public class DeploymentService {
                     .map(UserHostPermission::getHostId)
                     .collect(Collectors.toSet());
         }
-        log.info("[SSE] new subscriber userId={} role={} allowedHosts={}", user.getId(), user.getRole(), allowedHostIds == null ? "ALL" : allowedHostIds);
+        // Close and remove any existing emitters for this userId (prevents zombie accumulation on reconnect)
+        final UUID userId = user.getId();
+        globalEmitters.removeIf(e -> {
+            if (e.userId().equals(userId)) {
+                try { e.emitter().complete(); } catch (Exception ignored) {}
+                return true;
+            }
+            return false;
+        });
+        log.info("[SSE] new subscriber userId={} role={} allowedHosts={} totalAfter={}", userId, user.getRole(), allowedHostIds == null ? "ALL" : allowedHostIds, globalEmitters.size() + 1);
         SseEmitter emitter = new SseEmitter(0L);
-        EventEmitter entry = new EventEmitter(emitter, allowedHostIds);
+        EventEmitter entry = new EventEmitter(emitter, allowedHostIds, userId);
         globalEmitters.add(entry);
-        emitter.onCompletion(() -> { log.info("[SSE] emitter completed userId={}", user.getId()); globalEmitters.remove(entry); });
-        emitter.onTimeout(() -> { log.info("[SSE] emitter timeout userId={}", user.getId()); globalEmitters.remove(entry); });
-        emitter.onError(e -> { log.warn("[SSE] emitter error userId={}: {}", user.getId(), e.getMessage()); globalEmitters.remove(entry); });
+        emitter.onCompletion(() -> { log.info("[SSE] emitter completed userId={}", userId); globalEmitters.remove(entry); });
+        emitter.onTimeout(() -> { log.info("[SSE] emitter timeout userId={}", userId); globalEmitters.remove(entry); });
+        emitter.onError(e -> { log.warn("[SSE] emitter error userId={}: {}", userId, e.getMessage()); globalEmitters.remove(entry); });
+        // Replay current IN_PROGRESS deployments so the client is immediately up-to-date after reconnect
+        final Set<UUID> finalAllowedHostIds = allowedHostIds;
+        List<Deployment> inProgress = deploymentRepository.findByStatus(DeploymentStatus.IN_PROGRESS);
+        for (Deployment d : inProgress) {
+            if (finalAllowedHostIds != null && !finalAllowedHostIds.contains(d.getHostId())) continue;
+            try {
+                String data = String.format("{\"hostId\":\"%s\",\"deploymentId\":\"%s\",\"status\":\"%s\"}", d.getHostId(), d.getId(), d.getStatus().name());
+                emitter.send(SseEmitter.event().name("deployment.status").data(data));
+            } catch (Exception ignored) {}
+        }
         return emitter;
+    }
+
+    @Scheduled(fixedDelay = 30_000)
+    public void sendHeartbeat() {
+        if (globalEmitters.isEmpty()) return;
+        List<EventEmitter> dead = new ArrayList<>();
+        for (EventEmitter entry : globalEmitters) {
+            try {
+                entry.emitter().send(SseEmitter.event().comment("heartbeat"));
+            } catch (Exception e) {
+                dead.add(entry);
+            }
+        }
+        if (!dead.isEmpty()) {
+            globalEmitters.removeAll(dead);
+            log.info("[SSE] heartbeat: removed {} dead emitter(s), remaining={}", dead.size(), globalEmitters.size());
+        }
     }
 
     private void broadcastStatusEvent(UUID hostId, UUID deploymentId, DeploymentStatus status) {

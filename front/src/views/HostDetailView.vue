@@ -278,19 +278,26 @@ export default {
           this.defaultDeployCommand = res.data.settings?.default_deploy_command || ''
         }).catch(() => {})
         
-        this._events = useDeploymentEvents(e => {
-          if (e.hostId !== this.$route.params.id) return
-          this.loadHost()
-          if (e.status === 'IN_PROGRESS') {
-            if (this.currentDeploymentId !== e.deploymentId) {
-              this.logContent = ''
-              this.activeTab = 'logs'
-              this.startSse(e.deploymentId)
+        this._events = useDeploymentEvents(
+          e => {
+            if (e.hostId !== this.$route.params.id) return
+            this.loadHost()
+            if (e.status === 'IN_PROGRESS') {
+              if (this.currentDeploymentId !== e.deploymentId) {
+                this.logContent = ''
+                this.activeTab = 'logs'
+                this.startSse(e.deploymentId)
+              }
+            } else {
+              this.loadHistory()
             }
-          } else {
+          },
+          () => {
+            // SSE reconnected: resync host state in case events were missed during reconnect window
+            this.loadHost()
             this.loadHistory()
           }
-        })
+        )
         this._events.connect()
       })
   },

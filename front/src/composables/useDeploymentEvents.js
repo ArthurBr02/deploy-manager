@@ -7,13 +7,15 @@ import axios from '@/api/axios'
  * @param {Function} onEvent Callback called when a deployment status event is received.
  * @returns {Object} { connect, disconnect }
  */
-export function useDeploymentEvents(onEvent) {
+export function useDeploymentEvents(onEvent, onReconnect = null) {
   let src = null
   let destroyed = false
   let retryTimer = null
+  let hadError = false
 
   const disconnect = () => {
     destroyed = true
+    hadError = false
     clearTimeout(retryTimer)
     if (src) {
       src.close()
@@ -34,7 +36,13 @@ export function useDeploymentEvents(onEvent) {
 
       src = new EventSource(`/api/deployments/events?token=${token}`)
 
-      src.addEventListener('open', () => console.log('[SSE] Global events connected'))
+      src.addEventListener('open', () => {
+        console.log('[SSE] Global events connected')
+        if (hadError && onReconnect) {
+          hadError = false
+          onReconnect()
+        }
+      })
       
       src.addEventListener('deployment.status', e => {
         try {
@@ -47,6 +55,7 @@ export function useDeploymentEvents(onEvent) {
 
       src.addEventListener('error', e => {
         console.error('[SSE] Global events error:', e)
+        hadError = true
         if (src) {
           src.close()
           src = null

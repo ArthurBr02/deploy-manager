@@ -49,7 +49,7 @@
             <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               <RocketIcon class="w-3.5 h-3.5 text-accent" /> Commande de déploiement
             </label>
-            <input v-model="form.deployCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultDeployCommand || 'sh /root/{host}/liv.sh'" />
+            <textarea v-model="form.deployCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultDeployCommand || 'sh /root/{host}/liv.sh'" />
             <p class="text-xs text-gray-400 mt-1">Par défaut : <code class="font-mono text-xs">{{ defaultDeployCommand || 'sh /root/{host}/liv.sh' }}</code></p>
           </div>
 
@@ -57,7 +57,7 @@
             <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               <PackageIcon class="w-3.5 h-3.5 text-gray-400" /> Commande de génération
             </label>
-            <input v-model="form.generateCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="laisser vide pour masquer le bouton" />
+            <textarea v-model="form.generateCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour masquer le bouton" />
             <p class="text-xs text-gray-400 mt-1">Le bouton « Générer » ne s'affiche pas si ce champ est vide.</p>
           </div>
 
@@ -65,21 +65,25 @@
             <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               <TruckIcon class="w-3.5 h-3.5 text-gray-400" /> Commande de livraison
             </label>
-            <input v-model="form.deliverCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="laisser vide pour masquer le bouton" />
+            <textarea v-model="form.deliverCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour masquer le bouton" />
           </div>
 
           <div>
             <label class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               <TerminalIcon class="w-3.5 h-3.5 text-gray-400" /> Commande Tlog
             </label>
-            <input v-model="form.tlogCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultTlogCommand || 'ssh root@{domain} tlog'" />
+            <textarea v-model="form.tlogCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultTlogCommand || 'ssh root@{domain} tlog'" />
             <p class="text-xs text-gray-400 mt-1">Par défaut : <code class="font-mono text-xs">{{ defaultTlogCommand || 'ssh root@{domain} tlog' }}</code></p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe base de données (optionnel)</label>
-            <input type="password" v-model="form.dbPassword" autocomplete="new-password" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Mot de passe utilisé via {db_password}" />
-            <p class="text-xs text-gray-400 mt-1">Non affiché dans le détail de l'hôte. Accessible via <code class="font-mono text-xs">{db_password}</code> dans toutes les commandes.</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commande de Rollback (optionnel)</label>
+            <textarea v-model="form.rollbackCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour masquer le bouton" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">URL Healthcheck (optionnel)</label>
+            <input v-model="form.healthcheckUrl" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="https://{domain}/health" />
           </div>
 
           <div>
@@ -88,6 +92,36 @@
               <input v-model="form.timeout" type="number" min="0" class="w-24 border border-warm-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="10" />
               <span class="text-xs text-gray-400">Vide = utiliser le timeout global. <strong>0</strong> = désactivé.</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Dump SQL -->
+        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+          <div>
+            <h2 class="font-semibold text-gray-900">Dump SQL</h2>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="dumpEnabled" v-model="form.dumpEnabled" class="w-4 h-4 rounded border-warm-border text-accent focus:ring-accent/20" />
+            <label for="dumpEnabled" class="text-sm font-medium text-gray-700">Activer la gestion des dumps SQL</label>
+          </div>
+
+          <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe base de données (optionnel)</label>
+            <input type="password" v-model="form.dbPassword" autocomplete="new-password" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Mot de passe utilisé via {db_password}" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Utilisable via <span class="font-mono">{db_password}</span> dans les commandes. Non affiché dans le détail de l'hôte.</p>
+          </div>
+
+          <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commande de dump (optionnel)</label>
+            <textarea v-model="form.dumpCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`ssh root@{domain} &quot;mysqldump -u root -p{db_password} mabase&quot; > {dump_name}`" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Variables : <span class="font-mono">{host}</span>, <span class="font-mono">{ip}</span>, <span class="font-mono">{domain}</span>, <span class="font-mono">{dump_name}</span>, <span class="font-mono">{db_password}</span>. ⚠️ Le <code>&gt;</code> doit être <strong>hors</strong> des guillemets SSH pour rediriger localement.</p>
+          </div>
+
+          <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nom du fichier dump (optionnel)</label>
+            <input v-model="form.dumpFilename" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`${form.name || '{host}'}.sql`" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Laisse vide pour utiliser le nom de l'hôte par défaut (<span class="font-mono">{{ form.name || '{host}' }}.sql</span>).</p>
           </div>
         </div>
 
@@ -130,6 +164,11 @@ export default {
         generateCommand: '',
         deliverCommand: '',
         tlogCommand: '',
+        rollbackCommand: '',
+        healthcheckUrl: '',
+        dumpEnabled: true,
+        dumpCommand: '',
+        dumpFilename: '',
         dbPassword: '',
         timeout: '',
       },
@@ -161,6 +200,11 @@ export default {
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,
         tlogCommand: this.form.tlogCommand || null,
+        rollbackCommand: this.form.rollbackCommand || null,
+        healthcheckUrl: this.form.healthcheckUrl || null,
+        dumpEnabled: this.form.dumpEnabled,
+        dumpCommand: this.form.dumpCommand || null,
+        dumpFilename: this.form.dumpFilename || null,
         dbPassword: this.form.dbPassword || null,
         defaultTimeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
       }).then(() => {
