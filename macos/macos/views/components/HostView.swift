@@ -111,7 +111,8 @@ extension HostModel {
             canDeploy: true,
             canEdit: true,
             canExecute: true,
-            canDump: true
+            canDump: true,
+            canSsh: true
         )
     }
 }

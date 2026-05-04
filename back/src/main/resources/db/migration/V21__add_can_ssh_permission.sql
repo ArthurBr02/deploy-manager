@@ -1,0 +1,1 @@
+ALTER TABLE user_host_permissions ADD COLUMN can_ssh BOOLEAN NOT NULL DEFAULT FALSE;

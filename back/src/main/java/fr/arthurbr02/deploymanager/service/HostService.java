@@ -46,7 +46,7 @@ public class HostService {
         }
     }
 
-    record PermEntry(UUID hostId, String hostName, boolean canDeploy, boolean canEdit, boolean canExecute, boolean canDump) {}
+    record PermEntry(UUID hostId, String hostName, boolean canDeploy, boolean canEdit, boolean canExecute, boolean canDump, boolean canSsh) {}
     record AllPermsSnapshot(UUID userId, List<PermEntry> permissions) {}
 
     private final HostRepository hostRepository;
@@ -81,7 +81,8 @@ public class HostService {
             boolean canEdit = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanEdit());
             boolean canExecute = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanExecute());
             boolean canDump = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanDump());
-            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, isDumpAvailable(h));
+            boolean canSsh = currentUser.getRole() == Role.ADMIN || (permMap.containsKey(h.getId()) && permMap.get(h.getId()).isCanSsh());
+            return HostWithStatusResponse.from(h, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, canSsh, isDumpAvailable(h));
         }).collect(Collectors.toList());
     }
 
@@ -103,8 +104,9 @@ public class HostService {
         boolean canEdit = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanEdit());
         boolean canExecute = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanExecute());
         boolean canDump = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanDump());
+        boolean canSsh = currentUser.getRole() == Role.ADMIN || (perm != null && perm.isCanSsh());
 
-        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, isDumpAvailable(host));
+        return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, canSsh, isDumpAvailable(host));
     }
 
     public HostAdminDetailResponse getHostForEdit(UUID id, User currentUser) {
@@ -324,7 +326,8 @@ public class HostService {
         perm.setCanEdit(req.canEdit());
         perm.setCanExecute(req.canExecute());
         perm.setCanDump(req.canDump());
-        if (!req.canDeploy() && !req.canEdit() && !req.canExecute() && !req.canDump()) {
+        perm.setCanSsh(req.canSsh());
+        if (!req.canDeploy() && !req.canEdit() && !req.canExecute() && !req.canDump() && !req.canSsh()) {
             permissionRepository.deleteByUserIdAndHostId(userId, req.hostId());
         } else {
             permissionRepository.save(perm);
@@ -339,7 +342,7 @@ public class HostService {
         List<PermEntry> entries = permissionRepository.findByUserId(userId).stream()
                 .map(p -> new PermEntry(p.getHostId(),
                         p.getHost() != null ? p.getHost().getName() : null,
-                        p.isCanDeploy(), p.isCanEdit(), p.isCanExecute(), p.isCanDump()))
+                        p.isCanDeploy(), p.isCanEdit(), p.isCanExecute(), p.isCanDump(), p.isCanSsh()))
                 .collect(Collectors.toList());
         return new AllPermsSnapshot(userId, entries);
     }
@@ -361,6 +364,7 @@ public class HostService {
             m.put("canEdit", p.isCanEdit());
             m.put("canExecute", p.isCanExecute());
             m.put("canDump", p.isCanDump());
+            m.put("canSsh", p.isCanSsh());
             return m;
         }).collect(Collectors.toList());
     }

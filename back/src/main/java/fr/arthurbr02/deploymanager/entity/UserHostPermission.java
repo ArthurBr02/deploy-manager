@@ -37,6 +37,9 @@ public class UserHostPermission {
     @Column(name = "can_dump", nullable = false)
     private boolean canDump;
 
+    @Column(name = "can_ssh", nullable = false)
+    private boolean canSsh;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

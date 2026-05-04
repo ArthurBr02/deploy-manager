@@ -36,4 +36,5 @@ struct HostModel: Identifiable, Codable {
     let canEdit: Bool
     let canExecute: Bool
     let canDump: Bool
+    let canSsh: Bool
 }

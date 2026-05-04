@@ -33,7 +33,8 @@ struct HostsView: View {
         canDeploy: true,
         canEdit: true,
         canExecute: true,
-        canDump: true
+        canDump: true,
+        canSsh: true
     )
     
     var body: some View {
