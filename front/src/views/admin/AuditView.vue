@@ -187,7 +187,7 @@
         </div>
       </div>
 
-      <div v-if="totalPages > 1" class="mt-4 flex justify-between items-center text-sm text-gray-500">
+      <div v-if="totalPages >= 1" class="mt-4 flex justify-between items-center text-sm text-gray-500">
         <span>Page {{ filters.page + 1 }} sur {{ totalPages }}</span>
         <div class="flex gap-2">
           <button @click="filters.page--" :disabled="filters.page === 0"
@@ -255,6 +255,10 @@ export default {
     }
   },
   computed: {
+    filterQuery() {
+      const { page, ...rest } = this.filters
+      return rest
+    },
     processedLogs() {
       const result = []
       let i = 0
@@ -283,11 +287,23 @@ export default {
       return result
     }
   },
+  watch: {
+    filterQuery: {
+      deep: true,
+      handler() {
+        if (this.filters.page !== 0) {
+          this.filters.page = 0
+        } else {
+          this.load()
+        }
+      }
+    },
+    'filters.page'() { this.load() }
+  },
   mounted() {
     syncQuery(this, {
       key: 'audit_logs',
       defaultFilters: { userId: '', entityName: '', action: '', search: '', page: 0 },
-      onUpdate: () => this.load()
     })
     this.load()
     this.loadUsers()
