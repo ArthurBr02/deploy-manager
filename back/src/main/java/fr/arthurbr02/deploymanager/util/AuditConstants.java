@@ -19,4 +19,12 @@ public final class AuditConstants {
     public static final String ACTION_TERMINAL_DISCONNECT = "TERMINAL_DISCONNECT";
     public static final String ACTION_TERMINAL_COMMAND = "TERMINAL_COMMAND";
     public static final String ACTION_TERMINAL_COMMAND_BLOCKED = "TERMINAL_COMMAND_BLOCKED";
+
+    // MFA
+    public static final String ACTION_MFA_CODE_SENT = "MFA_CODE_SENT";
+    public static final String ACTION_MFA_VERIFIED = "MFA_VERIFIED";
+    public static final String ACTION_MFA_FAILED = "MFA_FAILED";
+    public static final String ACTION_MFA_BLOCKED = "MFA_BLOCKED";
+    public static final String ACTION_MFA_DEVICE_TRUSTED = "MFA_DEVICE_TRUSTED";
+    public static final String ACTION_MFA_DEVICE_REVOKED = "MFA_DEVICE_REVOKED";
 }

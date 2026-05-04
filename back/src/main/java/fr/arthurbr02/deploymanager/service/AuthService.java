@@ -32,13 +32,13 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final PersonalAccessTokenService patService;
+    private final MfaService mfaService;
 
     @Value("${app.security.cookie-secure}")
     private boolean cookieSecure;
 
     @Transactional(readOnly = true)
     public User validateSseToken(String token) {
-        // 1. Try as JWT SSE token or Access Token
         try {
             Claims claims = jwtUtil.validateAccessToken(token);
             UUID userId = UUID.fromString(claims.getSubject());
@@ -46,23 +46,29 @@ public class AuthService {
                     .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         } catch (Exception ignored) {}
 
-        // 2. Try as Personal Access Token (PAT)
         return patService.validateToken(token)
                 .orElseThrow(() -> new ForbiddenException("Token SSE, Access ou PAT invalide ou expiré"));
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest req, HttpServletResponse response) {
+    public AuthResponse login(LoginRequest req, HttpServletRequest request, HttpServletResponse response) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(req.email())
                 .orElseThrow(() -> new RuntimeException("Identifiants invalides"));
         if (!passwordEncoder.matches(req.password(), user.getPassword())) {
             throw new RuntimeException("Identifiants invalides");
         }
-        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
-        setRefreshCookie(response, refreshToken);
-        UserInfo info = new UserInfo(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole().name(), user.getAvatar());
-        return new LoginResponse(accessToken, info);
+        if (mfaService.isMfaRequired(user.getId(), request)) {
+            return mfaService.initiateMfa(user);
+        }
+        return buildLoginResponse(user, response);
+    }
+
+    @Transactional
+    public LoginResponse verifyMfaAndLogin(VerifyMfaRequest req, HttpServletRequest request, HttpServletResponse response) {
+        UUID userId = mfaService.verifyMfaAndGetUserId(req, request, response);
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        return buildLoginResponse(user, response);
     }
 
     @Transactional
@@ -119,6 +125,14 @@ public class AuthService {
         userRepository.save(user);
         prt.setUsed(true);
         resetTokenRepository.save(prt);
+    }
+
+    private LoginResponse buildLoginResponse(User user, HttpServletResponse response) {
+        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+        setRefreshCookie(response, refreshToken);
+        UserInfo info = new UserInfo(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole().name(), user.getAvatar());
+        return new LoginResponse(accessToken, info);
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token) {

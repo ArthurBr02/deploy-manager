@@ -142,6 +142,32 @@
                   </div>
                 </div>
               </div>
+              <!-- Security -->
+              <div v-if="filters.activeTab === 'security' && isAdmin" class="animate-in fade-in duration-300 p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-gray-500">Appareils marqués comme sûrs via la double authentification.</p>
+                  <button v-if="trustedDevices.length > 0" @click="revokeAllDevices"
+                    class="px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                    Tout révoquer
+                  </button>
+                </div>
+                <div v-if="trustedDevices.length === 0" class="text-center py-16 text-gray-400 text-sm italic">
+                  Aucun appareil de confiance enregistré.
+                </div>
+                <div v-else class="space-y-2">
+                  <div v-for="d in trustedDevices" :key="d.id" class="flex items-start justify-between p-3 border border-warm-border rounded-xl bg-warm-muted/20">
+                    <div class="min-w-0 pr-3">
+                      <div class="text-sm font-medium text-gray-900 truncate">{{ d.name || 'Appareil inconnu' }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">{{ d.ipAddress }} · Expire le {{ formatDate(d.expiresAt) }}</div>
+                    </div>
+                    <button @click="revokeDevice(d.id)" class="flex-shrink-0 p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -216,6 +242,7 @@ import adminUsersService from '@/services/adminUsersService'
 import adminAuditService from '@/services/adminAuditService'
 import deploymentsService from '@/services/deploymentsService'
 import hostsService from '@/services/hostsService'
+import mfaService from '@/services/mfaService'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeploymentTable from '@/components/DeploymentTable.vue'
 import DeploymentLogsModal from '@/components/DeploymentLogsModal.vue'
@@ -238,7 +265,7 @@ export default {
       return this.user?.role === 'ADMIN'
     },
     visibleTabs() {
-      return this.tabs.filter(t => t.id !== 'permissions' || this.isAdmin)
+      return this.tabs.filter(t => (t.id !== 'permissions' && t.id !== 'security') || this.isAdmin)
     },
     filteredHosts() {
       if (!this.hosts) return []
@@ -275,8 +302,10 @@ export default {
       },
       tabs: [
         { id: 'deployments', label: 'Historique' },
-        { id: 'permissions', label: 'Droits d\'accès' }
+        { id: 'permissions', label: 'Droits d\'accès' },
+        { id: 'security', label: 'Sécurité' },
       ],
+      trustedDevices: [],
       
       deploymentsLoading: false,
       deploymentsPage: 0,
@@ -325,6 +354,7 @@ export default {
         this.loadDeployments()
         if (this.isAdmin) {
           this.loadAudit()
+          this.loadTrustedDevices()
         }
       } catch (e) {
         this.toastStore.error("Erreur lors du chargement des données")
@@ -398,6 +428,25 @@ export default {
       }).finally(() => {
         this.saving = false
       })
+    },
+    loadTrustedDevices() {
+      mfaService.adminGetTrustedDevices(this.$route.params.id).then(res => {
+        this.trustedDevices = res.data
+      }).catch(() => {})
+    },
+    revokeDevice(deviceId) {
+      if (!confirm('Révoquer cet appareil de confiance ?')) return
+      mfaService.adminRevokeTrustedDevice(this.$route.params.id, deviceId).then(() => {
+        this.loadTrustedDevices()
+        this.toastStore.success('Appareil révoqué')
+      }).catch(() => this.toastStore.error('Erreur lors de la révocation'))
+    },
+    revokeAllDevices() {
+      if (!confirm('Révoquer tous les appareils de confiance de cet utilisateur ?')) return
+      mfaService.adminRevokeAllTrustedDevices(this.$route.params.id).then(() => {
+        this.loadTrustedDevices()
+        this.toastStore.success('Tous les appareils révoqués')
+      }).catch(() => this.toastStore.error('Erreur'))
     },
     formatDate(d) {
       if (!d) return '—'

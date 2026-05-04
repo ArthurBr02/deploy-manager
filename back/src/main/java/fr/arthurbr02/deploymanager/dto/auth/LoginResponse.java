@@ -1,2 +1,2 @@
 package fr.arthurbr02.deploymanager.dto.auth;
-public record LoginResponse(String accessToken, UserInfo user) {}
+public record LoginResponse(String accessToken, UserInfo user) implements AuthResponse {}

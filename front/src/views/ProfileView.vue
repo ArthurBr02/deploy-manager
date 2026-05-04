@@ -62,6 +62,24 @@
           </button>
         </div>
 
+        <!-- Trusted devices -->
+        <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
+          <h2 class="font-semibold text-gray-900">Appareils de confiance</h2>
+          <p class="text-xs text-gray-500">Ces appareils ne nécessitent pas de code 2FA lors de la connexion pendant 30 jours.</p>
+          <div v-if="trustedDevices.length > 0" class="space-y-2">
+            <div v-for="d in trustedDevices" :key="d.id" class="flex items-start justify-between p-3 border border-warm-border rounded-lg bg-warm-muted/30">
+              <div class="flex flex-col min-w-0 pr-3">
+                <span class="text-sm font-medium text-gray-900 truncate">{{ formatUserAgent(d.name) }}</span>
+                <span class="text-xs text-gray-500 mt-0.5">{{ d.ipAddress }} · Expire le {{ formatDate(d.expiresAt) }}</span>
+              </div>
+              <button @click="revokeTrustedDevice(d.id)" class="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors flex-shrink-0">
+                <TrashIcon class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div v-else class="text-sm text-gray-500 italic py-2">Aucun appareil de confiance.</div>
+        </div>
+
         <!-- PAT form -->
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <h2 class="font-semibold text-gray-900">Personal Access Tokens</h2>
@@ -113,6 +131,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import profileService from '@/services/profileService'
 import tokensService from '@/services/tokensService'
+import mfaService from '@/services/mfaService'
 import { TrashIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar.vue'
 
@@ -140,12 +159,14 @@ export default {
       deletingAvatar: false,
       tokens: [],
       newToken: null,
+      trustedDevices: [],
     }
   },
   mounted() {
     this.form.firstName = this.authStore.user?.firstName || ''
     this.form.lastName = this.authStore.user?.lastName || ''
     this.loadTokens()
+    this.loadTrustedDevices()
   },
   methods: {
     loadTokens() {
@@ -154,6 +175,26 @@ export default {
       }).catch(e => {
         console.error('Failed to load tokens', e)
       })
+    },
+    loadTrustedDevices() {
+      mfaService.getTrustedDevices().then(res => {
+        this.trustedDevices = res.data
+      }).catch(() => {})
+    },
+    revokeTrustedDevice(id) {
+      if (!confirm('Révoquer cet appareil de confiance ?')) return
+      mfaService.revokeTrustedDevice(id).then(() => {
+        this.loadTrustedDevices()
+        this.toastStore.success('Appareil révoqué')
+      }).catch(() => {
+        this.toastStore.error('Erreur lors de la révocation')
+      })
+    },
+    formatUserAgent(ua) {
+      if (!ua) return 'Appareil inconnu'
+      const browser = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/[\d.]+/)?.[0] || ''
+      const os = ua.match(/\(([^)]+)\)/)?.[1]?.split(';')[0] || ''
+      return [browser, os].filter(Boolean).join(' — ') || ua.substring(0, 60)
     },
     createToken() {
       this.creatingToken = true

@@ -92,6 +92,21 @@
           </div>
         </div>
 
+        <!-- Sécurité -->
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
+          <h2 class="font-semibold text-gray-900">Sécurité</h2>
+          <div class="flex items-start gap-3 group cursor-pointer" @click="settings.two_factor_enabled = settings.two_factor_enabled === 'true' ? 'false' : 'true'">
+            <div class="relative flex items-center justify-center w-5 h-5 mt-0.5 border-2 rounded transition-all duration-200 shrink-0"
+              :class="settings.two_factor_enabled === 'true' ? 'bg-accent border-accent shadow-sm shadow-accent/20' : 'bg-white border-warm-border group-hover:border-warm-border-strong'">
+              <CheckIcon v-if="settings.two_factor_enabled === 'true'" class="w-3.5 h-3.5 text-white stroke-[3]" />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Double authentification (2FA)</label>
+              <p class="text-xs text-gray-500 mt-1 leading-relaxed max-w-lg">Envoie un code à usage unique par e-mail lors de la connexion. Nécessite une configuration SMTP valide — si le SMTP n'est pas configuré, la 2FA est automatiquement bypassée.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Commandes bloquées -->
         <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Commandes Terminal bloquées</h2>
@@ -236,6 +251,7 @@ export default {
         smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
         audit_terminal_commands: 'false',
         blocked_commands: '',
+        two_factor_enabled: 'true',
       },
       pageLoading: false,
       saving: false,

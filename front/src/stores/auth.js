@@ -32,12 +32,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function handleLoginSuccess(data) {
+    accessToken.value = data.accessToken
+    user.value = data.user
+    _scheduleTokenRefresh(data.accessToken)
+    router.push({ name: 'hosts' })
+  }
+
   function login(email, password) {
     return authService.login(email, password).then(res => {
-      accessToken.value = res.data.accessToken
-      user.value = res.data.user
-      _scheduleTokenRefresh(res.data.accessToken)
-      router.push({ name: 'hosts' })
+      if (res.data.status === 'MFA_REQUIRED') {
+        sessionStorage.setItem('mfa_challenge_id', res.data.challengeId)
+        router.push({ name: 'mfa-verify' })
+        return
+      }
+      handleLoginSuccess(res.data)
     })
   }
 
@@ -70,5 +79,5 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  return { accessToken, user, isAuthenticated, isAdmin, login, logout, refreshProfile, tryRestoreSession }
+  return { accessToken, user, isAuthenticated, isAdmin, login, logout, refreshProfile, tryRestoreSession, handleLoginSuccess }
 })

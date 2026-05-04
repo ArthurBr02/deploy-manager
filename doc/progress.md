@@ -186,3 +186,23 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Correctif SSE : Résolution de la saturation des connexions (limite navigateur de 6) via l'utilisation de `sse-token` à usage unique, la fermeture systématique des flux sur erreur (`onerror`) et le maintien du flux jusqu'à la fin du healthcheck asynchrone.
 - [x] Correctif #7 : Ajout des champs "Commande de Rollback" et "URL Healthcheck" dans la page de modification d'un hôte (`HostEditView.vue`) — champs présents dans le backend mais absents du formulaire frontend.
 - [x] Correctif export CSV déploiements : correction du pattern de téléchargement blob (append/remove DOM + `setTimeout` pour `revokeObjectURL`) et ajout de la gestion d'erreur avec toast.
+
+## Phase 15 : Double Authentification (2FA)
+
+### Sprint 25 : 2FA par e-mail avec appareils de confiance
+- [x] Migration BDD (V20) : tables `mfa_codes`, `trusted_devices`, clé `two_factor_enabled` dans `app_config`
+- [x] Backend : Entités `MfaCode` et `TrustedDevice`
+- [x] Backend : Repositories `MfaCodeRepository` et `TrustedDeviceRepository`
+- [x] Backend : `MfaService` — génération/vérification codes, gestion appareils de confiance, cleanup schedulé
+- [x] Backend : `AuthService` — login modifié pour retourner `AuthResponse` (LoginResponse ou MfaRequiredResponse), ajout `verifyMfaAndLogin`
+- [x] Backend : `AuthController` — endpoints `POST /auth/verify-mfa`, `GET /auth/trusted-devices`, `DELETE /auth/trusted-devices/{id}`
+- [x] Backend : `UserController` — endpoints admin trusted-devices (list, revoke, revoke-all)
+- [x] Backend : `AuditConstants` — constantes MFA (MFA_CODE_SENT, MFA_VERIFIED, MFA_FAILED, MFA_BLOCKED, MFA_DEVICE_TRUSTED, MFA_DEVICE_REVOKED)
+- [x] Frontend : `mfaService.js` — service API 2FA et trusted devices
+- [x] Frontend : `MfaVerifyView.vue` — vue de vérification du code (inputs séparés, auto-focus, case "Faire confiance à cet appareil")
+- [x] Frontend : `auth.js` (store) — gestion `MFA_REQUIRED`, méthode `handleLoginSuccess`
+- [x] Frontend : `router/index.js` — route `/mfa-verify`
+- [x] Frontend : `SettingsView.vue` — section Sécurité avec toggle `two_factor_enabled`
+- [x] Frontend : `ProfileView.vue` — section "Appareils de confiance" avec révocation
+- [x] Frontend : `UserDetailView.vue` — onglet "Sécurité" avec liste et révocation des appareils (admin)
+- [x] Documentation : `README.md` et `doc/progress.md` mis à jour

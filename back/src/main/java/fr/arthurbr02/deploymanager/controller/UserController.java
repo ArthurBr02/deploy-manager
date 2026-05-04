@@ -1,7 +1,9 @@
 package fr.arthurbr02.deploymanager.controller;
 
+import fr.arthurbr02.deploymanager.dto.auth.TrustedDeviceDto;
 import fr.arthurbr02.deploymanager.dto.user.*;
 import fr.arthurbr02.deploymanager.entity.User;
+import fr.arthurbr02.deploymanager.service.MfaService;
 import fr.arthurbr02.deploymanager.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final MfaService mfaService;
 
     @GetMapping("/admin/users")
     @Operation(summary = "Lister tous les utilisateurs (admin)")
@@ -92,5 +95,26 @@ public class UserController {
     @Operation(summary = "Supprimer mon avatar")
     public ResponseEntity<UserResponse> deleteAvatar(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(userService.deleteAvatar(user.getId()));
+    }
+
+    @GetMapping("/admin/users/{userId}/trusted-devices")
+    @Operation(summary = "Lister les appareils de confiance d'un utilisateur (admin)")
+    public ResponseEntity<List<TrustedDeviceDto>> adminGetTrustedDevices(@PathVariable UUID userId) {
+        return ResponseEntity.ok(mfaService.getUserTrustedDevices(userId));
+    }
+
+    @DeleteMapping("/admin/users/{userId}/trusted-devices/{deviceId}")
+    @Operation(summary = "Révoquer un appareil de confiance (admin)")
+    public ResponseEntity<Void> adminRevokeTrustedDevice(@PathVariable UUID userId,
+                                                         @PathVariable UUID deviceId) {
+        mfaService.revokeTrustedDevice(deviceId, userId, true);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/admin/users/{userId}/trusted-devices")
+    @Operation(summary = "Révoquer tous les appareils de confiance d'un utilisateur (admin)")
+    public ResponseEntity<Void> adminRevokeAllTrustedDevices(@PathVariable UUID userId) {
+        mfaService.revokeAllTrustedDevices(userId);
+        return ResponseEntity.noContent().build();
     }
 }

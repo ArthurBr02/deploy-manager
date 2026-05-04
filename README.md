@@ -44,6 +44,9 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 
 ### Sécurité
 - Authentification JWT (access 15 min + refresh 7 jours, rotation automatique)
+- **Double authentification (2FA)** : code à 6 chiffres envoyé par e-mail lors de la connexion (valide 10 min), activable/désactivable via les paramètres admin, bypass automatique si SMTP non configuré
+  - **Anti-brute force** : 5 tentatives incorrectes → code invalidé, l'utilisateur doit recommencer le login
+  - **Appareils de confiance** : option "Faire confiance à cet appareil" (30 jours) pour bypasser la 2FA ; révocables depuis le Profil (utilisateur) ou la page admin utilisateur (admin)
 - Réinitialisation de mot de passe par e-mail (lien tokenisé)
 - Personal Access Tokens (PAT) hachés en Argon2, affichés une seule fois à la création
 - SSE protégés par tokens à usage unique
@@ -336,6 +339,7 @@ Les paramètres suivants sont configurables dans l'interface d'administration (`
 | `shell_linux_arg` | `-c` | Argument pour exécuter une commande via le shell Linux |
 | `shell_windows_bin` | `cmd.exe` | Binaire du shell pour Windows |
 | `shell_windows_arg` | `/c` | Argument pour exécuter une commande via le shell Windows |
+| `two_factor_enabled` | `true` | Activer la double authentification (2FA) par e-mail à la connexion (bypass automatique si SMTP non configuré) |
 
 ---
 
@@ -349,16 +353,16 @@ deploy-manager/
 │   │   ├── controller/    # AuthController, HostController, DeploymentController,
 │   │   │                  # AuditController, McpController, PersonalAccessTokenController...
 │   │   ├── service/       # Logique métier (DeploymentService, HostService,
-│   │   │                  # AuditService, NotificationService, TerminalHandler...)
+│   │   │                  # AuditService, NotificationService, TerminalHandler, MfaService...)
 │   │   ├── entity/        # Entités JPA (User, Host, Deployment, AuditLog,
-│   │   │                  # PersonalAccessToken, UserHostPermission...)
+│   │   │                  # PersonalAccessToken, UserHostPermission, MfaCode, TrustedDevice...)
 │   │   ├── repository/    # Repositories Spring Data
 │   │   ├── dto/           # DTOs requête/réponse
 │   │   ├── security/      # JwtUtil, JwtAuthFilter
 │   │   └── enums/         # Role, DeploymentStatus, DeploymentType
 │   └── src/main/resources/
 │       ├── application.yml
-│       └── db/migration/  # Migrations Flyway (V1 → V18)
+│       └── db/migration/  # Migrations Flyway (V1 → V20)
 ├── front/                 # Frontend Vue.js
 │   └── src/
 │       ├── api/           # Axios + intercepteur refresh
@@ -373,7 +377,8 @@ deploy-manager/
 ├── plan/
 │   ├── plan_implementation_deploy_manager.md
 │   ├── plan_improvements_2026.md
-│   └── plan_tlog_feature.md
+│   ├── plan_tlog_feature.md
+│   └── plan_2fa_email.md
 ├── design/                # Maquettes HTML/JSX de référence
 ├── docker-compose.yml
 └── .env.example
@@ -391,6 +396,9 @@ deploy-manager/
 | `POST` | `/api/auth/logout` | Déconnexion |
 | `POST` | `/api/auth/forgot-password` | Demande de réinitialisation de mot de passe |
 | `POST` | `/api/auth/reset-password` | Réinitialisation du mot de passe |
+| `POST` | `/api/auth/verify-mfa` | Vérifier le code 2FA et finaliser la connexion |
+| `GET` | `/api/auth/trusted-devices` | Lister mes appareils de confiance |
+| `DELETE` | `/api/auth/trusted-devices/{id}` | Révoquer un appareil de confiance |
 
 ### Profil & Personal Access Tokens
 | Méthode | Route | Description |
@@ -445,6 +453,9 @@ deploy-manager/
 | `GET` | `/api/admin/audit` | Logs d'audit paginés *(admin)* |
 | `GET` | `/api/admin/audit/user/{userId}` | Logs d'audit filtrés par utilisateur *(admin)* |
 | `GET` | `/api/admin/audit/{id}` | Détail d'un log d'audit avec diff *(admin)* |
+| `GET` | `/api/admin/users/{userId}/trusted-devices` | Appareils de confiance d'un utilisateur *(admin)* |
+| `DELETE` | `/api/admin/users/{userId}/trusted-devices/{id}` | Révoquer un appareil de confiance *(admin)* |
+| `DELETE` | `/api/admin/users/{userId}/trusted-devices` | Révoquer tous les appareils d'un utilisateur *(admin)* |
 
 ### Terminal & MCP
 | Méthode | Route | Description |
