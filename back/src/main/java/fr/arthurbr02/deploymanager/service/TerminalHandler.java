@@ -53,7 +53,6 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final Map<String, UUID> sessionContextIds = new ConcurrentHashMap<>();
     private final Map<String, Long> sessionStartTimes = new ConcurrentHashMap<>();
     private final Map<String, StringBuilder> commandBuffers = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> sessionIsAdmin = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     private static final Pattern ANSI_ESCAPE = Pattern.compile("\\[[0-9;]*[A-Za-z]");
@@ -138,7 +137,6 @@ public class TerminalHandler extends TextWebSocketHandler {
             sessionUsers.put(wsSession.getId(), user.getId());
             sessionContextIds.put(wsSession.getId(), contextId);
             sessionStartTimes.put(wsSession.getId(), System.currentTimeMillis());
-            sessionIsAdmin.put(wsSession.getId(), user.getRole() == Role.ADMIN);
             commandBuffers.put(wsSession.getId(), new StringBuilder());
             auditService.logAs(user.getId(), AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_CONNECT, contextId, null,
                     Map.of("hostName", host.getName(), "userId", user.getId().toString()));
@@ -200,8 +198,7 @@ public class TerminalHandler extends TextWebSocketHandler {
                 String command = ANSI_ESCAPE.matcher(buf.toString()).replaceAll("").trim();
                 buf.setLength(0);
                 if (!command.isEmpty()) {
-                    boolean isAdmin = sessionIsAdmin.getOrDefault(sessionId, true);
-                    if (!isAdmin && configService.isCommandBlocked(command)) {
+                    if (configService.isCommandBlocked(command)) {
                         handleBlockedCommand(sessionId, command, wsSession, ssh);
                     } else {
                         logCommand(sessionId, command);
@@ -279,7 +276,6 @@ public class TerminalHandler extends TextWebSocketHandler {
         UUID userId = sessionUsers.remove(wsSession.getId());
         UUID contextId = sessionContextIds.remove(wsSession.getId());
         commandBuffers.remove(wsSession.getId());
-        sessionIsAdmin.remove(wsSession.getId());
         Long startTime = sessionStartTimes.remove(wsSession.getId());
         if (hostId != null && startTime != null) {
             long durationSeconds = (System.currentTimeMillis() - startTime) / 1000;

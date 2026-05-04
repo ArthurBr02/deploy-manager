@@ -39,7 +39,7 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - Permission dédiée `can_execute` par hôte et par utilisateur
 - Journalisation optionnelle des commandes saisies dans l'audit log (activable via `audit_terminal_commands`), avec regroupement par session via `context_id`
 - **Blocage de commandes** : liste de patterns regex configurables par les admins (`blocked_commands`). Le blocage s'applique à deux niveaux :
-  - **Terminal interactif** : si un utilisateur (rôle USER) saisit une commande correspondant à un pattern, la commande est interrompue (Ctrl+C envoyé au SSH), un message d'erreur s'affiche dans le terminal, l'événement est toujours audité (`TERMINAL_COMMAND_BLOCKED`), et tous les admins reçoivent un e-mail d'alerte.
+  - **Terminal interactif** : si un utilisateur saisit une commande correspondant à un pattern, la commande est interrompue (Ctrl+C envoyé au SSH), un message d'erreur s'affiche dans le terminal, l'événement est toujours audité (`TERMINAL_COMMAND_BLOCKED`), et tous les admins reçoivent un e-mail d'alerte.
   - **Champs de commandes des hôtes** : les commandes de déploiement, génération, livraison, rollback, tlog et dump sont également vérifiées avant exécution (s'applique à tous les utilisateurs, ADMIN inclus). Si bloquée, l'opération est annulée avec une erreur et tous les admins sont notifiés par e-mail.
 
 ### Sécurité
@@ -330,7 +330,7 @@ Les paramètres suivants sont configurables dans l'interface d'administration (`
 | `notification_enabled` | `false` | Activer les notifications webhook |
 | `notification_webhook_url` | *(vide)* | URL du webhook Discord ou Slack |
 | `audit_terminal_commands` | `false` | Journaliser les commandes saisies dans le terminal SSH |
-| `blocked_commands` | *(vide)* | Expressions régulières (une par ligne) bloquant les commandes dans le terminal interactif (USER uniquement) et dans les champs de commandes des hôtes (deploy, tlog, dump… — tous utilisateurs). |
+| `blocked_commands` | *(vide)* | Expressions régulières (une par ligne) bloquant les commandes dans le terminal interactif et dans les champs de commandes des hôtes (deploy, tlog, dump…) — s'applique à tous les utilisateurs. |
 | `server_os` | `linux` | Système d'exploitation du serveur (linux ou windows) |
 | `shell_linux_bin` | `/bin/sh` | Binaire du shell pour Linux |
 | `shell_linux_arg` | `-c` | Argument pour exécuter une commande via le shell Linux |
