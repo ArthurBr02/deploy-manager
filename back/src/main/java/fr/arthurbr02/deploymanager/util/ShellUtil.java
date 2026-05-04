@@ -26,10 +26,15 @@ public class ShellUtil {
     }
 
     public static String replaceVariables(String command, String name, String ip, String domain) {
+        return replaceVariables(command, name, ip, domain, null);
+    }
+
+    public static String replaceVariables(String command, String name, String ip, String domain, String dbPassword) {
         if (command == null) return null;
         return command
                 .replace("{host}", "'" + escapeShell(name) + "'")
                 .replace("{ip}", "'" + escapeShell(ip) + "'")
-                .replace("{domain}", "'" + escapeShell(domain) + "'");
+                .replace("{domain}", "'" + escapeShell(domain) + "'")
+                .replace("{db_password}", escapeShell(dbPassword != null ? dbPassword : ""));
     }
 }

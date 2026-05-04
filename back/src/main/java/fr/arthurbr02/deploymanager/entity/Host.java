@@ -63,6 +63,9 @@ public class Host {
     @Column(name = "dump_filename")
     private String dumpFilename;
 
+    @Column(name = "db_password")
+    private String dbPassword;
+
     @Column(name = "default_timeout")
     private Integer defaultTimeout;
 

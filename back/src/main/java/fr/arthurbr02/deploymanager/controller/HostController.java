@@ -64,6 +64,12 @@ public class HostController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/hosts/{id}/edit")
+    @Operation(summary = "Récupérer les données complètes d'un hôte pour édition (admin ou canEdit), inclut dbPassword")
+    public ResponseEntity<HostAdminDetailResponse> getForEdit(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(hostService.getHostForEdit(id, user));
+    }
+
     @GetMapping("/hosts")
     @Operation(summary = "Lister les hôtes accessibles")
     public ResponseEntity<List<HostWithStatusResponse>> list(@AuthenticationPrincipal User user) {

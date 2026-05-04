@@ -3,6 +3,7 @@ import api from '@/api/axios'
 export default {
   getAll: () => api.get('/hosts'),
   getById: (id) => api.get(`/hosts/${id}`),
+  getForEdit: (id) => api.get(`/hosts/${id}/edit`),
   update: (id, data) => api.put(`/hosts/${id}`, data),
   create: (data) => api.post('/admin/hosts', data),
   delete: (id) => api.delete(`/admin/hosts/${id}`),

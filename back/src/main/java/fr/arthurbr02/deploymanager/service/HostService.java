@@ -35,12 +35,13 @@ public class HostService {
                               String deploymentCommand, String generateCommand, String deliverCommand,
                               String tlogCommand, String rollbackCommand, String healthcheckUrl,
                               String dumpCommand, String dumpFolder, boolean dumpEnabled, String dumpFilename,
-                              Integer defaultTimeout) {
+                              String dbPasswordMasked, Integer defaultTimeout) {
         static HostAuditSnapshot of(Host h) {
             return new HostAuditSnapshot(h.getName(), h.getIp(), h.getDomain(), h.getSshUser(), h.getSshPort(),
                     h.getDeploymentCommand(), h.getGenerateCommand(), h.getDeliverCommand(),
                     h.getTlogCommand(), h.getRollbackCommand(), h.getHealthcheckUrl(),
                     h.getDumpCommand(), h.getDumpFolder(), h.isDumpEnabled(), h.getDumpFilename(),
+                    h.getDbPassword() != null && !h.getDbPassword().isBlank() ? "***" : null,
                     h.getDefaultTimeout());
         }
     }
@@ -106,6 +107,19 @@ public class HostService {
         return HostWithStatusResponse.from(host, lastStatus, lastAt, canDeploy, canEdit, canExecute, canDump, isDumpAvailable(host));
     }
 
+    public HostAdminDetailResponse getHostForEdit(UUID id, User currentUser) {
+        Host host = hostRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Hôte introuvable"));
+
+        if (currentUser.getRole() != Role.ADMIN) {
+            UserHostPermission perm = permissionRepository.findByUserIdAndHostId(currentUser.getId(), id)
+                    .orElseThrow(() -> new ForbiddenException("Accès refusé"));
+            if (!perm.isCanEdit()) throw new ForbiddenException("Permission insuffisante");
+        }
+
+        return HostAdminDetailResponse.from(host, isDumpAvailable(host));
+    }
+
     private boolean isDumpAvailable(Host h) {
         if (!h.isDumpEnabled()) return false;
         String folder = h.getDumpFolder();
@@ -136,6 +150,7 @@ public class HostService {
                 .dumpFolder(req.dumpFolder())
                 .dumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true)
                 .dumpFilename(req.dumpFilename())
+                .dbPassword(req.dbPassword())
                 .defaultTimeout(req.defaultTimeout())
                 .build();
         host = hostRepository.save(host);
@@ -168,6 +183,9 @@ public class HostService {
         host.setDumpFolder(req.dumpFolder());
         host.setDumpEnabled(req.dumpEnabled() != null ? req.dumpEnabled() : true);
         host.setDumpFilename(req.dumpFilename());
+        if (req.dbPassword() != null && !req.dbPassword().isBlank()) {
+            host.setDbPassword(req.dbPassword());
+        }
         host.setDefaultTimeout(req.defaultTimeout());
         host = hostRepository.save(host);
         auditService.log(AuditConstants.ENTITY_HOST, host.getId(), AuditConstants.ACTION_UPDATE, before, HostAuditSnapshot.of(host));
@@ -191,7 +209,7 @@ public class HostService {
                 : configService.get("default_tlog_command", "ssh -p " + sshPort + " " + sshUser + "@{domain} tlog");
 
         String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
-        String resolved = ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain);
+        String resolved = ShellUtil.replaceVariables(command, host.getName(), host.getIp(), effectiveDomain, host.getDbPassword());
 
         SseEmitter emitter = new SseEmitter(0L);
 
@@ -484,7 +502,7 @@ public class HostService {
         String dumpPath = folder + "/" + filename;
 
         String effectiveDomain = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
-        String command = ShellUtil.replaceVariables(host.getDumpCommand(), host.getName(), host.getIp(), effectiveDomain);
+        String command = ShellUtil.replaceVariables(host.getDumpCommand(), host.getName(), host.getIp(), effectiveDomain, host.getDbPassword());
         command = command.replace("{dump_name}", dumpPath);
 
         String shellBin, shellArg;

@@ -53,5 +53,8 @@ public record HostRequest(
     @Size(max = 255)
     String dumpFilename,
 
+    @Size(max = 255)
+    String dbPassword,
+
     Integer defaultTimeout
 ) {}

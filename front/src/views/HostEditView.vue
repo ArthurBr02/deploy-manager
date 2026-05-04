@@ -24,7 +24,7 @@
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <div>
             <h2 class="font-semibold text-gray-900">Modifier l'hôte</h2>
-            <p class="text-sm text-gray-400 mt-0.5">Variables disponibles dans les commandes : <code class="font-mono text-xs bg-warm-muted px-1 rounded">{host}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{ip}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{domain}</code>.</p>
+            <p class="text-sm text-gray-400 mt-0.5">Variables disponibles dans les commandes : <code class="font-mono text-xs bg-warm-muted px-1 rounded">{host}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{ip}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{domain}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{db_password}</code>.</p>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -102,9 +102,15 @@
           </div>
 
           <div v-if="form.dumpEnabled">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe base de données (optionnel)</label>
+            <input type="password" v-model="form.dbPassword" autocomplete="new-password" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Laisser vide pour conserver le mot de passe actuel" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Utilisable via <span class="font-mono">{db_password}</span> dans les commandes. Non affiché dans le détail de l'hôte.</p>
+          </div>
+
+          <div v-if="form.dumpEnabled">
             <label class="block text-sm font-medium text-gray-700 mb-1">Commande de dump (optionnel)</label>
-            <textarea v-model="form.dumpCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`pg_dump -U postgres mydb > {dump_name}`" />
-            <p class="text-[10px] text-gray-400 mt-0.5">Variables : <span class="font-mono">{host}</span>, <span class="font-mono">{ip}</span>, <span class="font-mono">{domain}</span>, <span class="font-mono">{dump_name}</span> (chemin complet du fichier).</p>
+            <textarea v-model="form.dumpCommand" rows="2" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="`ssh root@{domain} &quot;mysqldump -u root -p{db_password} mabase&quot; > {dump_name}`" />
+            <p class="text-[10px] text-gray-400 mt-0.5">Variables : <span class="font-mono">{host}</span>, <span class="font-mono">{ip}</span>, <span class="font-mono">{domain}</span>, <span class="font-mono">{dump_name}</span>, <span class="font-mono">{db_password}</span>. ⚠️ Le <code>&gt;</code> doit être <strong>hors</strong> des guillemets SSH pour rediriger localement.</p>
           </div>
 
           <div v-if="form.dumpEnabled">
@@ -157,6 +163,7 @@ export default {
         dumpEnabled: true,
         dumpCommand: '',
         dumpFilename: '',
+        dbPassword: '',
       },
       loading: true,
       saving: false,
@@ -164,26 +171,29 @@ export default {
     }
   },
   mounted() {
-    hostsService.getById(this.$route.params.id).then(res => {
-      this.host = res.data
-      if (res.data.canEdit) {
-        this.form = {
-          name: res.data.name || '',
-          ip: res.data.ip || '',
-          domain: res.data.domain || '',
-          sshUser: res.data.sshUser || '',
-          sshPort: res.data.sshPort ?? 22,
-          deploymentCommand: res.data.deploymentCommand || '',
-          generateCommand: res.data.generateCommand || '',
-          deliverCommand: res.data.deliverCommand || '',
-          tlogCommand: res.data.tlogCommand || '',
-          rollbackCommand: res.data.rollbackCommand || '',
-          healthcheckUrl: res.data.healthcheckUrl || '',
-          defaultTimeout: res.data.defaultTimeout ?? null,
-          dumpEnabled: res.data.dumpEnabled ?? true,
-          dumpCommand: res.data.dumpCommand || '',
-          dumpFilename: res.data.dumpFilename || '',
-        }
+    hostsService.getForEdit(this.$route.params.id).then(res => {
+      this.host = { ...res.data, canEdit: true }
+      this.form = {
+        name: res.data.name || '',
+        ip: res.data.ip || '',
+        domain: res.data.domain || '',
+        sshUser: res.data.sshUser || '',
+        sshPort: res.data.sshPort ?? 22,
+        deploymentCommand: res.data.deploymentCommand || '',
+        generateCommand: res.data.generateCommand || '',
+        deliverCommand: res.data.deliverCommand || '',
+        tlogCommand: res.data.tlogCommand || '',
+        rollbackCommand: res.data.rollbackCommand || '',
+        healthcheckUrl: res.data.healthcheckUrl || '',
+        defaultTimeout: res.data.defaultTimeout ?? null,
+        dumpEnabled: res.data.dumpEnabled ?? true,
+        dumpCommand: res.data.dumpCommand || '',
+        dumpFilename: res.data.dumpFilename || '',
+        dbPassword: res.data.dbPassword || '',
+      }
+    }).catch(e => {
+      if (e.response?.status === 403) {
+        this.host = { canEdit: false }
       }
     }).finally(() => {
       this.loading = false
@@ -206,6 +216,7 @@ export default {
         rollbackCommand: this.form.rollbackCommand || null,
         healthcheckUrl: this.form.healthcheckUrl || null,
         domain: this.form.domain || null,
+        dbPassword: this.form.dbPassword || null,
       }).then(() => {
         this.toastStore.success('Hôte mis à jour')
         this.$router.push(`/hosts/${this.$route.params.id}`)

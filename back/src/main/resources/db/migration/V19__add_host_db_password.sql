@@ -1,0 +1,1 @@
+ALTER TABLE hosts ADD COLUMN db_password VARCHAR(255);

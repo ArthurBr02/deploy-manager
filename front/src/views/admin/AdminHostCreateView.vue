@@ -42,7 +42,7 @@
         <div class="bg-white border border-warm-border rounded-xl p-5 space-y-4">
           <div>
             <h2 class="font-semibold text-gray-900">Commandes personnalisées</h2>
-            <p class="text-sm text-gray-400 mt-0.5">Laissez vide pour utiliser la commande globale par défaut. Variables : <code class="font-mono text-xs bg-warm-muted px-1 rounded">{host}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{ip}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{domain}</code>.</p>
+            <p class="text-sm text-gray-400 mt-0.5">Laissez vide pour utiliser la commande globale par défaut. Variables : <code class="font-mono text-xs bg-warm-muted px-1 rounded">{host}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{ip}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{domain}</code>, <code class="font-mono text-xs bg-warm-muted px-1 rounded">{db_password}</code>.</p>
           </div>
 
           <div>
@@ -74,6 +74,12 @@
             </label>
             <input v-model="form.tlogCommand" class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" :placeholder="defaultTlogCommand || 'ssh root@{domain} tlog'" />
             <p class="text-xs text-gray-400 mt-1">Par défaut : <code class="font-mono text-xs">{{ defaultTlogCommand || 'ssh root@{domain} tlog' }}</code></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe base de données (optionnel)</label>
+            <input type="password" v-model="form.dbPassword" autocomplete="new-password" class="w-full border border-warm-border rounded-md px-3 py-2 text-sm font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" placeholder="Mot de passe utilisé via {db_password}" />
+            <p class="text-xs text-gray-400 mt-1">Non affiché dans le détail de l'hôte. Accessible via <code class="font-mono text-xs">{db_password}</code> dans toutes les commandes.</p>
           </div>
 
           <div>
@@ -124,6 +130,7 @@ export default {
         generateCommand: '',
         deliverCommand: '',
         tlogCommand: '',
+        dbPassword: '',
         timeout: '',
       },
       saving: false,
@@ -154,6 +161,7 @@ export default {
         generateCommand: this.form.generateCommand || null,
         deliverCommand: this.form.deliverCommand || null,
         tlogCommand: this.form.tlogCommand || null,
+        dbPassword: this.form.dbPassword || null,
         defaultTimeout: this.form.timeout !== '' ? Number(this.form.timeout) : null,
       }).then(() => {
         this.toastStore.success('Hôte créé avec succès')

@@ -552,7 +552,7 @@ public class DeploymentService {
     }
 
     private String replaceVariables(String command, Host host) {
-        return ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain());
+        return ShellUtil.replaceVariables(command, host.getName(), host.getIp(), host.getDomain(), host.getDbPassword());
     }
 
     private String readLogFile(String path) {
