@@ -170,6 +170,11 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Frontend : `HostEditForm` + `HostEditView` — champ `dumpCommand`
 - [x] Frontend : `UserDetailView` — toggle permission "Dump" dans la gestion des droits
 
+### Sprint 24 : Mise à jour globale de la documentation
+- [x] Analyse complète du projet (migrations V12 à V19, MCP, Audit, Dumps)
+- [x] Mise à jour exhaustive du `README.md` (Fonctionnalités, Variables, MCP, Commandes, Permissions)
+- [x] Synchronisation du suivi de progression (`doc/progress.md`)
+
 ## Maintenance & Hotfixes
 - [x] Correction d'un crash `TypeError` dans `UserDetailView` lors de l'affichage de logs d'audit with `entityId` nul.
 - [x] Correction d'une erreur `400 Bad Request` lors de la modification d'un hôte sans domaine (relaxation de la validation DTO).

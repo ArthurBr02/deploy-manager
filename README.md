@@ -20,12 +20,12 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 
 ### Déploiement
 - **Types de déploiement** : DEPLOY, GENERATE, DELIVER, ROLLBACK — chaque hôte peut avoir une commande distincte par type
-- **Exécution shell** : remplacement automatique des variables `{host}`, `{ip}`, `{domain}` avec échappement anti-injection
+- **Exécution shell** : remplacement automatique des variables `{host}`, `{ip}`, `{domain}`, `{db_password}` avec échappement anti-injection
 - **Logs en temps réel** : streaming SSE des sorties stdout/stderr pendant l'exécution
-- **Timeout & annulation** : job planifié de détection des timeouts et annulation manuelle avec kill forcé du processus
+- **Timeout & annulation** : job planifié de détection des timeouts, annulation manuelle avec kill forcé du processus, et timeout par défaut configurable par hôte
 - **Blocage concurrent** : un seul déploiement actif par hôte
 - **Healthcheck post-déploiement** : requête HTTP automatique après un déploiement réussi (URL configurable par hôte)
-- **Nettoyage au démarrage** : les déploiements `IN_PROGRESS` au redémarrage sont automatiquement marqués `FAILURE`
+- **Nettoyage au démarrage** : les déploiements `IN_PROGRESS` au redermarrage sont automatiquement marqués `FAILURE`
 
 ### Logs applicatifs (tlog)
 - Streaming SSE en temps réel via une commande distante configurable (ex : `ssh root@{domain} tlog`)
@@ -37,7 +37,7 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - Interface terminal interactive (xterm.js) directement dans le navigateur
 - Connexion WebSocket (`/ws/terminal`) avec authentification JWT
 - Permission dédiée `can_execute` par hôte et par utilisateur
-- Journalisation optionnelle des commandes saisies dans l'audit log (activable via `audit_terminal_commands`)
+- Journalisation optionnelle des commandes saisies dans l'audit log (activable via `audit_terminal_commands`), avec regroupement par session via `context_id`
 
 ### Sécurité
 - Authentification JWT (access 15 min + refresh 7 jours, rotation automatique)
@@ -52,9 +52,9 @@ Application web interne de gestion et de déploiement d'applications sur des hô
 - Page de détail utilisateur complète avec son historique de déploiements et son journal d'audit filtré
 - CRUD hôtes avec assignation fine des permissions par utilisateur (`can_deploy`, `can_edit`, `can_execute`, `can_dump`)
 - Configuration SSH par hôte (utilisateur et port personnalisables)
-- **Dumps SQL** : génération à la demande via une commande configurable, téléchargement direct si le fichier est présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs) ; activable/désactivable par hôte, nom de fichier et dossier configurables, permission `can_dump` par utilisateur
+- **Dumps SQL** : génération à la demande via une commande configurable (`dumpCommand` utilisant `{dump_name}`), téléchargement direct si le fichier est présent sur le serveur, ou bouton de demande de dump (envoi d'e-mail automatique aux administrateurs) ; activable/désactivable par hôte, nom de fichier et dossier configurables, mot de passe BDD sécurisé par hôte, permission `can_dump` par utilisateur
 - Import de fichier Ansible `hosts-all` (parsing et mise à jour conditionnelle)
-- Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, shell, OS, journalisation des commandes terminal)
+- Paramètres globaux (commande tlog par défaut, activation MCP, dossier de dumps, notifications, configuration du shell et de l'OS cible, journalisation des commandes terminal)
 - **Audit log** : historique paginé des modifications de configuration (Host, AppConfig, User) avec enrichissement automatique des informations utilisateur (nom complet, email), diff champ par champ, regroupement des sessions terminal par `context_id`
 - **Notifications externes** : webhook Discord/Slack déclenché automatiquement sur les déploiements en échec
 
@@ -327,6 +327,11 @@ Les paramètres suivants sont configurables dans l'interface d'administration (`
 | `notification_enabled` | `false` | Activer les notifications webhook |
 | `notification_webhook_url` | *(vide)* | URL du webhook Discord ou Slack |
 | `audit_terminal_commands` | `false` | Journaliser les commandes saisies dans le terminal SSH |
+| `server_os` | `linux` | Système d'exploitation du serveur (linux ou windows) |
+| `shell_linux_bin` | `/bin/sh` | Binaire du shell pour Linux |
+| `shell_linux_arg` | `-c` | Argument pour exécuter une commande via le shell Linux |
+| `shell_windows_bin` | `cmd.exe` | Binaire du shell pour Windows |
+| `shell_windows_arg` | `/c` | Argument pour exécuter une commande via le shell Windows |
 
 ---
 
@@ -479,14 +484,14 @@ Deploy Manager embarque un serveur MCP permettant à des LLMs (comme Claude Desk
 **Tous les utilisateurs :**
 - `list_hosts` : Liste les serveurs auxquels vous avez accès.
 - `get_host` : Affiche les détails d'un serveur spécifique.
-- `update_host` : Modifie les paramètres d'un serveur.
-- `deploy` : Lance un déploiement (DEPLOY, GENERATE, DELIVER ou ROLLBACK).
+- `update_host` : Modifie les paramètres d'un serveur (nom, IP, domaine, SSH, commandes, options de dump, timeout par défaut).
+- `deploy` : Lance un déploiement (DEPLOY, GENERATE, DELIVER ou ROLLBACK) avec un `timeout` optionnel en minutes.
 - `get_deployments` : Liste l'historique des déploiements.
 
 **Administrateurs uniquement :**
 - `create_host` / `delete_host` : Gestion des serveurs.
 - `list_users` / `create_user` / `update_user` / `delete_user` : Gestion des utilisateurs.
-- `set_permissions` : Gestion des permissions utilisateurs sur les hôtes.
+- `set_permissions` : Gestion des permissions utilisateurs sur les hôtes (`canDeploy`, `canEdit`, `canExecute`, `canDump`).
 - `get_settings` / `update_settings` : Paramètres globaux.
 
 ---
@@ -500,6 +505,8 @@ Les variables suivantes sont remplacées automatiquement avant l'exécution (ave
 | `{host}` | Nom de l'hôte |
 | `{ip}` | Adresse IP |
 | `{domain}` | Nom de domaine |
+| `{db_password}` | Mot de passe de la base de données configuré pour l'hôte |
+| `{dump_name}` | Chemin complet du fichier dump (uniquement dans `dumpCommand`) |
 
 Chaque hôte peut définir des commandes spécifiques pour chaque type d'opération :
 
@@ -515,6 +522,8 @@ Chaque hôte peut définir des commandes spécifiques pour chaque type d'opérat
 | `dumpFilename` | VARCHAR | Nom du fichier dump attendu sur le serveur (défaut : `{host}.sql`) |
 | `dumpFolder` | VARCHAR | Dossier contenant le dump sur le serveur (surcharge `default_dump_folder`) |
 | `dumpCommand` | TEXT | Commande exécutée pour générer le dump SQL à la demande |
+| `dbPassword` | VARCHAR | Mot de passe de la base de données (utilisable via `{db_password}`) |
+| `defaultTimeout` | INTEGER | Délai d'attente maximum par défaut en minutes |
 | `sshUser` | VARCHAR | Utilisateur SSH (défaut : `root`) |
 | `sshPort` | INTEGER | Port SSH (défaut : `22`) |
 
