@@ -6,12 +6,18 @@ import fr.arthurbr02.deploymanager.util.AuditConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AppConfigService {
 
     private final AppConfigRepository configRepository;
@@ -54,6 +60,22 @@ public class AppConfigService {
         if (!oldSnapshot.isEmpty()) {
             auditService.log(AuditConstants.ENTITY_APP_CONFIG, null, AuditConstants.ACTION_UPDATE, oldSnapshot, newSnapshot);
         }
+    }
+
+    public boolean isCommandBlocked(String command) {
+        String patterns = get("blocked_commands", "");
+        if (patterns == null || patterns.isBlank()) return false;
+        return Arrays.stream(patterns.split("\n"))
+                .map(String::trim)
+                .filter(p -> !p.isEmpty())
+                .anyMatch(p -> {
+                    try {
+                        return Pattern.compile(p).matcher(command).find();
+                    } catch (PatternSyntaxException e) {
+                        log.warn("Invalid blocked command regex: {}", p);
+                        return false;
+                    }
+                });
     }
 
     private static String mask(String key, String value) {

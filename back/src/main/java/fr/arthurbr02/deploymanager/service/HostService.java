@@ -213,6 +213,15 @@ public class HostService {
 
         SseEmitter emitter = new SseEmitter(0L);
 
+        if (configService.isCommandBlocked(resolved)) {
+            emailAdminsBlockedHostCommand(user, host, resolved, "TLOG");
+            try {
+                emitter.send(SseEmitter.event().name("appError").data("Commande bloquée par la politique de sécurité."));
+                emitter.complete();
+            } catch (IOException ignored) {}
+            return emitter;
+        }
+
         // Send 4KB padding to force Nginx/Proxies to flush their buffer immediately
         try {
             emitter.send(SseEmitter.event().name("padding").data(" ".repeat(4096)));
@@ -505,6 +514,11 @@ public class HostService {
         String command = ShellUtil.replaceVariables(host.getDumpCommand(), host.getName(), host.getIp(), effectiveDomain, host.getDbPassword());
         command = command.replace("{dump_name}", dumpPath);
 
+        if (configService.isCommandBlocked(command)) {
+            emailAdminsBlockedHostCommand(user, host, command, "DUMP");
+            throw new RuntimeException("La commande de dump est bloquée par la politique de sécurité.");
+        }
+
         String shellBin, shellArg;
         if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
             shellBin = configService.get("shell_windows_bin", "cmd.exe");
@@ -527,6 +541,23 @@ public class HostService {
             throw new RuntimeException("Dump interrompu");
         } catch (java.io.IOException e) {
             throw new RuntimeException("Erreur lors de l'exécution du dump : " + e.getMessage());
+        }
+    }
+
+    private void emailAdminsBlockedHostCommand(User triggeredBy, Host host, String command, String context) {
+        try {
+            List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
+            String subject = "[Deploy Manager] Commande bloquée";
+            String body = "Une commande interdite a été tentée.\n\n"
+                    + "Contexte : " + context + "\n"
+                    + "Hôte : " + host.getName() + "\n"
+                    + "Utilisateur : " + triggeredBy.getFirstName() + " " + triggeredBy.getLastName()
+                    + " (" + triggeredBy.getEmail() + ")\n"
+                    + "Commande : " + command + "\n"
+                    + "Date : " + java.time.LocalDateTime.now() + "\n";
+            admins.forEach(a -> mailService.sendEmail(a.getEmail(), subject, body));
+        } catch (Exception e) {
+            log.error("Failed to notify admins of blocked host command", e);
         }
     }
 }

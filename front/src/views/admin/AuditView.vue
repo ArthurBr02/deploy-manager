@@ -33,6 +33,7 @@
           <option value="DELETE">Suppression</option>
           <option value="TERMINAL_CONNECT">Connexion SSH</option>
           <option value="TERMINAL_COMMAND">Commande SSH</option>
+          <option value="TERMINAL_COMMAND_BLOCKED">Commande bloquée</option>
         </select>
         <button @click="resetFilters" class="w-full sm:w-auto px-3 py-1.5 border border-warm-border rounded-md text-sm bg-white hover:bg-warm-muted text-gray-500">
           Réinitialiser
@@ -221,12 +222,14 @@ const ACTION_CLASSES = {
   TERMINAL_CONNECT: 'bg-purple-100 text-purple-700',
   TERMINAL_DISCONNECT: 'bg-gray-100 text-gray-600',
   TERMINAL_COMMAND: 'bg-orange-100 text-orange-700',
+  TERMINAL_COMMAND_BLOCKED: 'bg-red-100 text-red-700',
 }
 
 const ACTION_LABELS = {
   TERMINAL_CONNECT: 'Connexion',
   TERMINAL_DISCONNECT: 'Déconnexion',
   TERMINAL_COMMAND: 'Commande',
+  TERMINAL_COMMAND_BLOCKED: 'Bloquée',
 }
 
 const ENTITY_ROUTES = {
@@ -256,8 +259,12 @@ export default {
   },
   computed: {
     filterQuery() {
-      const { page, ...rest } = this.filters
-      return rest
+      return {
+        userId: this.filters.userId,
+        entityName: this.filters.entityName,
+        action: this.filters.action,
+        search: this.filters.search,
+      }
     },
     processedLogs() {
       const result = []
@@ -322,8 +329,10 @@ export default {
       return this.expandedGroups.has(contextId)
     },
     getGroupLabel(group) {
-      const commands = group.logs.filter(l => l.action === 'TERMINAL_COMMAND').length
-      return `Session Terminal (${commands} commande${commands > 1 ? 's' : ''})`
+      const commands = group.logs.filter(l => l.action === 'TERMINAL_COMMAND' || l.action === 'TERMINAL_COMMAND_BLOCKED').length
+      const blocked = group.logs.filter(l => l.action === 'TERMINAL_COMMAND_BLOCKED').length
+      const blockedStr = blocked > 0 ? `, ${blocked} bloquée${blocked > 1 ? 's' : ''}` : ''
+      return `Session Terminal (${commands} commande${commands > 1 ? 's' : ''}${blockedStr})`
     },
     getGroupAction(group) {
       if (group.logs.some(l => l.action === 'TERMINAL_CONNECT')) return 'TERMINAL_CONNECT'

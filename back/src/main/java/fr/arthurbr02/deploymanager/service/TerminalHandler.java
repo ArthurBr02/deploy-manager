@@ -25,6 +25,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +45,7 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final UserHostPermissionRepository permissionRepository;
     private final AppConfigService configService;
     private final AuditService auditService;
+    private final MailService mailService;
 
     private final Map<String, SshSession> sshSessions = new ConcurrentHashMap<>();
     private final Map<String, UUID> sessionHosts = new ConcurrentHashMap<>();
@@ -50,9 +53,10 @@ public class TerminalHandler extends TextWebSocketHandler {
     private final Map<String, UUID> sessionContextIds = new ConcurrentHashMap<>();
     private final Map<String, Long> sessionStartTimes = new ConcurrentHashMap<>();
     private final Map<String, StringBuilder> commandBuffers = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> sessionIsAdmin = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
-    private static final Pattern ANSI_ESCAPE = Pattern.compile("\\[[0-9;]*[A-Za-z]");
+    private static final Pattern ANSI_ESCAPE = Pattern.compile("\\[[0-9;]*[A-Za-z]");
 
     private record SshSession(Session session, ChannelShell channel, OutputStream out) {}
 
@@ -100,7 +104,7 @@ public class TerminalHandler extends TextWebSocketHandler {
         // Connect to SSH
         try {
             JSch jsch = new JSch();
-            
+
             String sshKeyPath = configService.get("ssh_key_path", "/root/.ssh/id_rsa");
             log.info("Using SSH identity: {}", sshKeyPath);
             File keyFile = new File(sshKeyPath);
@@ -115,11 +119,11 @@ public class TerminalHandler extends TextWebSocketHandler {
             String targetHost = (host.getDomain() != null && !host.getDomain().isBlank()) ? host.getDomain() : host.getIp();
             String sshUser = (host.getSshUser() != null && !host.getSshUser().isBlank()) ? host.getSshUser() : "root";
             int sshPort = (host.getSshPort() != null && host.getSshPort() > 0) ? host.getSshPort() : 22;
-            
+
             log.info("Connecting to SSH: {}@{}:{}", sshUser, targetHost, sshPort);
             Session session = jsch.getSession(sshUser, targetHost, sshPort);
             session.setConfig("StrictHostKeyChecking", "no");
-            
+
             session.connect(30000);
             ChannelShell channel = (ChannelShell) session.openChannel("shell");
             channel.setPty(true);
@@ -134,6 +138,7 @@ public class TerminalHandler extends TextWebSocketHandler {
             sessionUsers.put(wsSession.getId(), user.getId());
             sessionContextIds.put(wsSession.getId(), contextId);
             sessionStartTimes.put(wsSession.getId(), System.currentTimeMillis());
+            sessionIsAdmin.put(wsSession.getId(), user.getRole() == Role.ADMIN);
             commandBuffers.put(wsSession.getId(), new StringBuilder());
             auditService.logAs(user.getId(), AuditConstants.ENTITY_TERMINAL, hostId, AuditConstants.ACTION_TERMINAL_CONNECT, contextId, null,
                     Map.of("hostName", host.getName(), "userId", user.getId().toString()));
@@ -179,27 +184,83 @@ public class TerminalHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession wsSession, TextMessage message) throws Exception {
         SshSession ssh = sshSessions.get(wsSession.getId());
-        if (ssh != null && ssh.out != null) {
+        if (ssh != null && ssh.out() != null) {
             String payload = message.getPayload();
-            ssh.out.write(payload.getBytes());
-            ssh.out.flush();
-            accumulateCommand(wsSession.getId(), payload);
+            ssh.out().write(payload.getBytes());
+            ssh.out().flush();
+            accumulateCommand(wsSession.getId(), payload, wsSession, ssh);
         }
     }
 
-    private void accumulateCommand(String sessionId, String payload) {
+    private void accumulateCommand(String sessionId, String payload, WebSocketSession wsSession, SshSession ssh) {
         StringBuilder buf = commandBuffers.get(sessionId);
         if (buf == null) return;
         for (char c : payload.toCharArray()) {
             if (c == '\r' || c == '\n') {
                 String command = ANSI_ESCAPE.matcher(buf.toString()).replaceAll("").trim();
                 buf.setLength(0);
-                if (!command.isEmpty()) logCommand(sessionId, command);
+                if (!command.isEmpty()) {
+                    boolean isAdmin = sessionIsAdmin.getOrDefault(sessionId, true);
+                    if (!isAdmin && configService.isCommandBlocked(command)) {
+                        handleBlockedCommand(sessionId, command, wsSession, ssh);
+                    } else {
+                        logCommand(sessionId, command);
+                    }
+                }
             } else if (c == '\u007f' || c == '\b') {
                 if (!buf.isEmpty()) buf.deleteCharAt(buf.length() - 1);
             } else if (c >= 32) {
                 buf.append(c);
             }
+        }
+    }
+
+    private void handleBlockedCommand(String sessionId, String command, WebSocketSession wsSession, SshSession ssh) {
+        try {
+            // Interrupt the command already sent to SSH
+            ssh.out().write(3); // Ctrl+C
+            ssh.out().flush();
+            // Show error in terminal (ANSI red)
+            wsSession.sendMessage(new TextMessage(
+                "\r\n[31m[BLOQUÉ] Commande interdite par un administrateur.[0m\r\n"
+            ));
+        } catch (Exception e) {
+            log.warn("Error sending block interrupt to SSH session {}", sessionId, e);
+        }
+
+        UUID hostId = sessionHosts.get(sessionId);
+        UUID userId = sessionUsers.get(sessionId);
+        UUID contextId = sessionContextIds.get(sessionId);
+
+        auditService.logAs(userId, AuditConstants.ENTITY_TERMINAL, hostId,
+                AuditConstants.ACTION_TERMINAL_COMMAND_BLOCKED, contextId, null,
+                Map.of("command", command));
+
+        emailAdminsBlockedCommand(userId, hostId, command, contextId);
+    }
+
+    private void emailAdminsBlockedCommand(UUID userId, UUID hostId, String command, UUID contextId) {
+        try {
+            User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
+            Host host = hostRepository.findByIdAndDeletedAtIsNull(hostId).orElse(null);
+            List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
+
+            String userName = user != null
+                    ? user.getFirstName() + " " + user.getLastName() + " (" + user.getEmail() + ")"
+                    : (userId != null ? userId.toString() : "inconnu");
+            String hostName = host != null ? host.getName() : (hostId != null ? hostId.toString() : "inconnu");
+
+            String subject = "[Deploy Manager] Commande bloquée";
+            String body = "Une commande interdite a été tentée dans le terminal SSH.\n\n"
+                    + "Utilisateur : " + userName + "\n"
+                    + "Hôte : " + hostName + "\n"
+                    + "Commande : " + command + "\n"
+                    + "Session : " + (contextId != null ? contextId.toString() : "N/A") + "\n"
+                    + "Date : " + LocalDateTime.now() + "\n";
+
+            admins.forEach(admin -> mailService.sendEmail(admin.getEmail(), subject, body));
+        } catch (Exception e) {
+            log.error("Failed to notify admins of blocked command", e);
         }
     }
 
@@ -218,6 +279,7 @@ public class TerminalHandler extends TextWebSocketHandler {
         UUID userId = sessionUsers.remove(wsSession.getId());
         UUID contextId = sessionContextIds.remove(wsSession.getId());
         commandBuffers.remove(wsSession.getId());
+        sessionIsAdmin.remove(wsSession.getId());
         Long startTime = sessionStartTimes.remove(wsSession.getId());
         if (hostId != null && startTime != null) {
             long durationSeconds = (System.currentTimeMillis() - startTime) / 1000;
@@ -226,8 +288,8 @@ public class TerminalHandler extends TextWebSocketHandler {
         }
         SshSession ssh = sshSessions.remove(wsSession.getId());
         if (ssh != null) {
-            if (ssh.channel != null) ssh.channel.disconnect();
-            if (ssh.session != null) ssh.session.disconnect();
+            if (ssh.channel() != null) ssh.channel().disconnect();
+            if (ssh.session() != null) ssh.session().disconnect();
         }
     }
 

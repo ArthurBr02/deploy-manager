@@ -50,6 +50,7 @@ public class DeploymentService {
     private final UserHostPermissionRepository permissionRepository;
     private final AppConfigService configService;
     private final NotificationService notificationService;
+    private final MailService mailService;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -87,6 +88,11 @@ public class DeploymentService {
         }
 
         String resolved = replaceVariables(command, host);
+
+        if (configService.isCommandBlocked(resolved)) {
+            emailAdminsBlockedHostCommand(currentUser, host, resolved, req.type().name());
+            throw new RuntimeException("La commande de déploiement est bloquée par la politique de sécurité.");
+        }
 
         Deployment deployment = Deployment.builder()
                 .hostId(hostId)
@@ -539,6 +545,23 @@ public class DeploymentService {
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private void emailAdminsBlockedHostCommand(User triggeredBy, Host host, String command, String context) {
+        try {
+            List<User> admins = userRepository.findAllByRoleAndDeletedAtIsNull(Role.ADMIN);
+            String subject = "[Deploy Manager] Commande bloquée";
+            String body = "Une commande interdite a été tentée.\n\n"
+                    + "Contexte : " + context + "\n"
+                    + "Hôte : " + host.getName() + "\n"
+                    + "Utilisateur : " + triggeredBy.getFirstName() + " " + triggeredBy.getLastName()
+                    + " (" + triggeredBy.getEmail() + ")\n"
+                    + "Commande : " + command + "\n"
+                    + "Date : " + java.time.LocalDateTime.now() + "\n";
+            admins.forEach(a -> mailService.sendEmail(a.getEmail(), subject, body));
+        } catch (Exception e) {
+            log.error("Failed to notify admins of blocked host command", e);
+        }
     }
 
     private String resolveCommand(Host host, DeploymentType type) {

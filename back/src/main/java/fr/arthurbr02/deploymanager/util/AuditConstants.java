@@ -18,4 +18,5 @@ public final class AuditConstants {
     public static final String ACTION_TERMINAL_CONNECT = "TERMINAL_CONNECT";
     public static final String ACTION_TERMINAL_DISCONNECT = "TERMINAL_DISCONNECT";
     public static final String ACTION_TERMINAL_COMMAND = "TERMINAL_COMMAND";
+    public static final String ACTION_TERMINAL_COMMAND_BLOCKED = "TERMINAL_COMMAND_BLOCKED";
 }

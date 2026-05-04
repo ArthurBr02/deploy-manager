@@ -92,6 +92,18 @@
           </div>
         </div>
 
+        <!-- Commandes bloquées -->
+        <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
+          <h2 class="font-semibold text-gray-900">Commandes Terminal bloquées</h2>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Expressions régulières (une par ligne)</label>
+            <textarea v-model="settings.blocked_commands" rows="6"
+              class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              placeholder="rm\s+-rf&#10;dd\s+if=&#10;mkfs" />
+            <p class="text-xs text-gray-400 mt-1">Ces patterns regex sont testés contre les commandes saisies par les utilisateurs (rôle USER) dans le terminal SSH. Les ADMINs ne sont pas concernés. Les patterns invalides sont ignorés.</p>
+          </div>
+        </div>
+
         <!-- Notifications -->
         <div class="bg-white border border-warm-border rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
           <h2 class="font-semibold text-gray-900">Notifications</h2>
@@ -223,6 +235,7 @@ export default {
         ssh_key_path: '',
         smtp_host: '', smtp_port: '', smtp_username: '', smtp_password: '', smtp_from: '',
         audit_terminal_commands: 'false',
+        blocked_commands: '',
       },
       pageLoading: false,
       saving: false,
