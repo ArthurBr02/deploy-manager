@@ -11,5 +11,8 @@ struct UtilColors {
     static let successColor: Color = Color("SuccessColor")
     static let errorColor: Color = Color("ErrorColor")
     static let pendingColor: Color = Color("PendingColor")
+    static let defaultColor: Color = Color("DefaultColor")
+    static let noneColor: Color = Color("NoneColor")
+    static let deployColor: Color = Color("DeployColor")
 }
 

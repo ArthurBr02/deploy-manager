@@ -13,8 +13,8 @@ struct AppRouter: View {
     var body: some View {
         Group {
             switch selection {
-            case .home:
-                HomeView()
+            case .hosts:
+                HostsView()
             case .settings:
                 SettingsView()
             case .folder(let id):

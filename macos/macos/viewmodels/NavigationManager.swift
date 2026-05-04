@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum NavigationItem: Hashable {
-    case home
+    case hosts
     case settings
     case folder(id: String)
 }

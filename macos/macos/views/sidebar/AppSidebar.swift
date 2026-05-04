@@ -14,16 +14,20 @@ struct AppSidebar: View {
     var user: UserProfile? {
         profileData.value
     }
+    
+    @AppStorage("favoris") var favoris: Bool = false
 
     var body: some View {
         List(selection: $navManager.selection) {
-            Section("Général") {
-                Label("Accueil", systemImage: "house").tag(NavigationItem.home)
+            Section("Espace de travail") {
+                Label("Hôtes", systemImage: "server.rack").tag(NavigationItem.hosts)
                 Label("Réglages", systemImage: "gear").tag(NavigationItem.settings)
             }
             
-            Section("Mes Dossiers") {
-                Label("Projets", systemImage: "folder").tag(NavigationItem.folder(id: "projets"))
+            if favoris {
+                Section("Favoris") {
+                    Label("Projets", systemImage: "folder").tag(NavigationItem.folder(id: "projets"))
+                }
             }
         }
         .listStyle(.sidebar)
