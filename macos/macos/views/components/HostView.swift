@@ -10,8 +10,8 @@ import SwiftUI
 struct HostView: View {
     let host: HostModel
     
-    // Astuce : Utilise des propriétés calculées (computed properties)
-    // plutôt que de stocker des strings formatées dans l'init.
+    @State private var isShowingDeployModal = false
+    
     var status: DeploymentStatus {
         DeploymentStatus(rawValue: host.lastDeploymentStatus ?? "PENDING") ?? .pending
     }
@@ -46,8 +46,9 @@ struct HostView: View {
                     }
                 }
                 
+                Divider()
+                
                 if let dateText = formattedDate {
-                    Divider()
                     HStack {
                         Text("Dernier déploiement le \(dateText)")
                             .font(.caption)
@@ -58,13 +59,16 @@ struct HostView: View {
                 }
                 
                 HStack {
-                    Button(action: {}) {
-                        HStack(alignment: .center) {
-                            Image(systemName: "airplane.up.right")
-                            Text("Déployer").frame(maxWidth: .infinity)
-                        }
+                    Button(action: {
+                        isShowingDeployModal = true
+                    }) {
+                        Label("Déployer", systemImage: "airplane.up.right")
+                                .frame(maxWidth: .infinity)
                     }.help("Cliquez pour déployer l'application sur l'hôte")
                         .foregroundStyle(.deploy)
+                        .sheet(isPresented: $isShowingDeployModal) {
+                            DeployModal(host: host)
+                        }
                     
                     if host.canSsh {
                         Button(action: {}) {

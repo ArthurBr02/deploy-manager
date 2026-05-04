@@ -38,8 +38,16 @@ struct HostsView: View {
     )
     
     var body: some View {
+        let columns = [
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ]
+        
         LayoutView(title: "Hôtes") {
-            HostView(host: tmp)
+            LazyVGrid(columns: columns) {
+                HostView(host: tmp)
+                HostView(host: tmp)
+            }
         }
     }
 }
