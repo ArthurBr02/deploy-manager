@@ -314,6 +314,7 @@ public class McpController {
                 (String) args.get("dumpFolder"),
                 args.get("dumpEnabled") instanceof Boolean b ? b : null,
                 (String) args.get("dumpFilename"),
+                (String) args.get("dbPassword"),
                 (Integer) args.get("defaultTimeout")
         );
     }
