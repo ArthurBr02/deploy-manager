@@ -271,7 +271,8 @@ public class McpController {
                         (boolean) args.get("canDeploy"),
                         (boolean) args.get("canEdit"),
                         args.containsKey("canExecute") ? (boolean) args.get("canExecute") : false,
-                        args.containsKey("canDump") ? (boolean) args.get("canDump") : false
+                        args.containsKey("canDump") ? (boolean) args.get("canDump") : false,
+                        args.containsKey("canSsh") ? (boolean) args.get("canSsh") : false
                 ));
                 return textResponse("Permissions mises à jour");
 
