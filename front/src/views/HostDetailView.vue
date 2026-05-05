@@ -399,6 +399,7 @@ export default {
     },
     startSse(deploymentId) {
       if (this._destroyed) return
+      if (this.currentDeploymentId === deploymentId) return
       this.currentDeploymentId = deploymentId
       this.activeDeployment = { id: deploymentId }
       this.viewedDeployment = null
