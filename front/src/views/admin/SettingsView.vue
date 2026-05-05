@@ -115,7 +115,7 @@
             <textarea v-model="settings.blocked_commands" rows="6"
               class="w-full border border-warm-border rounded-md px-3 py-2 text-xs font-mono outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               placeholder="rm\s+-rf&#10;dd\s+if=&#10;mkfs" />
-            <p class="text-xs text-gray-400 mt-1">Ces patterns regex sont testés contre les commandes saisies par les utilisateurs (rôle USER) dans le terminal SSH. Les ADMINs ne sont pas concernés. Les patterns invalides sont ignorés.</p>
+            <p class="text-xs text-gray-400 mt-1">Ces patterns regex sont testés contre les commandes saisies par les utilisateurs dans le terminal SSH. Les patterns invalides sont ignorés.</p>
           </div>
         </div>
 
