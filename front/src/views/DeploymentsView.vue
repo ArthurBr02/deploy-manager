@@ -62,7 +62,7 @@
 
       <!-- Pagination -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-        <span v-if="stats">{{ paginationLabel }}</span>
+        <span v-if="totalElements > 0">{{ paginationLabel }}</span>
         <span v-else></span>
         <div v-if="total > 1" class="flex items-center gap-1">
           <button @click="filters.page--" :disabled="filters.page === 0" class="px-3 py-1.5 text-sm border border-warm-border rounded-md bg-white hover:bg-warm-muted disabled:opacity-40">←</button>
@@ -115,6 +115,10 @@ export default {
   },
   computed: {
     ...mapStores(useToastStore),
+    filterQuery() {
+      const { search, hostId, status, type, period } = this.filters
+      return { search, hostId, status, type, period }
+    },
     periodLabel() {
       const map = { '24h': 'Dernières 24 h', '7d': '7 derniers jours', '30d': '30 derniers jours', '': 'Depuis toujours' }
       return map[this.filters.period] ?? ''
@@ -133,14 +137,27 @@ export default {
       ]
     },
   },
+  watch: {
+    filterQuery: {
+      deep: true,
+      handler() {
+        if (this.filters.page !== 0) {
+          this.filters.page = 0
+        } else {
+          this.load()
+          this.loadStats()
+        }
+      }
+    },
+    'filters.page'() {
+      this.load()
+      this.loadStats()
+    }
+  },
   mounted() {
     syncQuery(this, {
       key: 'deployments',
       defaultFilters: { search: '', hostId: '', status: '', type: '', period: '7d', page: 0 },
-      onUpdate: () => {
-        this.load()
-        this.loadStats()
-      }
     })
     this.load()
     this.loadStats()
@@ -165,9 +182,11 @@ export default {
     },
     loadStats() {
       const params = {}
-      if (this.filters.period) params.period = this.filters.period
+      if (this.filters.search) params.search = this.filters.search
       if (this.filters.hostId) params.hostId = this.filters.hostId
+      if (this.filters.status) params.status = this.filters.status
       if (this.filters.type) params.type = this.filters.type
+      if (this.filters.period) params.period = this.filters.period
       deploymentsService.getStats(params).then(res => {
         this.stats = res.data
       }).catch(() => {

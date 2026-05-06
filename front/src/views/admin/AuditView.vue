@@ -188,7 +188,7 @@
         </div>
       </div>
 
-      <div v-if="totalPages >= 1" class="mt-4 flex justify-between items-center text-sm text-gray-500">
+      <div v-if="totalPages > 1" class="mt-4 flex justify-between items-center text-sm text-gray-500">
         <span>Page {{ filters.page + 1 }} sur {{ totalPages }}</span>
         <div class="flex gap-2">
           <button @click="filters.page--" :disabled="filters.page === 0"
