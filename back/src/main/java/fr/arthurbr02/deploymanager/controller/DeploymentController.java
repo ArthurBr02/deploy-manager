@@ -114,7 +114,7 @@ public class DeploymentController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String period,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
         return ResponseEntity.ok(deploymentService.findAll(user, hostId, userId, search, status, type, period, page, size));
     }
 }

@@ -61,9 +61,9 @@ public class AuditService {
         auditLogRepository.save(entry);
     }
 
-    public Page<AuditLogResponse> findAll(UUID userId, String entityName, String action, String search, int page, int size) {
+    public Page<AuditLogResponse> findAll(UUID userId, String entityName, String action, String search, int page, Integer size) {
         Specification<AuditLog> spec = buildSpec(userId, entityName, action, search);
-        return auditLogRepository.findAll(spec, PageRequest.of(page, size)).map(this::toResponse);
+        return auditLogRepository.findAll(spec, PageRequest.of(page, size != null ? size : Integer.MAX_VALUE)).map(this::toResponse);
     }
 
     private Specification<AuditLog> buildSpec(UUID userId, String entityName, String action, String search) {
@@ -90,12 +90,8 @@ public class AuditService {
         };
     }
 
-    public Page<AuditLogResponse> findAll(int page, int size) {
-        return findAll(null, null, null, null, page, size);
-    }
-
-    public Page<AuditLogResponse> findByUserId(UUID userId, int page, int size) {
-        return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size)).map(this::toResponse);
+    public Page<AuditLogResponse> findByUserId(UUID userId, int page, Integer size) {
+        return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size != null ? size : Integer.MAX_VALUE)).map(this::toResponse);
     }
 
     @Transactional

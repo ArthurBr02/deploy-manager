@@ -37,7 +37,7 @@ public class AuditController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
         return ResponseEntity.ok(auditService.findAll(userId, entityName, action, search, page, size));
     }
 
@@ -46,7 +46,7 @@ public class AuditController {
     public ResponseEntity<Page<AuditLogResponse>> findByUserId(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
         return ResponseEntity.ok(auditService.findByUserId(userId, page, size));
     }
 

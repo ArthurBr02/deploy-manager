@@ -40,7 +40,7 @@
         </button>
       </div>
 
-      <div v-if="loading && !logs.length" class="flex items-center justify-center py-20">
+      <div v-if="loading && !allLogs.length" class="flex items-center justify-center py-20">
         <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
       <div v-else class="bg-white border border-warm-border rounded-xl overflow-hidden">
@@ -180,7 +180,7 @@
                   </tr>
                 </template>
               </template>
-              <tr v-if="!loading && !logs.length">
+              <tr v-if="!loading && !allLogs.length">
                 <td colspan="7" class="py-20 text-center text-gray-400 italic">Aucun log d'audit trouvé</td>
               </tr>
             </tbody>
@@ -242,10 +242,9 @@ export default {
   components: { UserBadge, AuditDetailModal, SearchIcon },
   data() {
     return {
-      logs: [],
+      allLogs: [],
       usersList: [],
       loading: false,
-      totalPages: 0,
       selectedLog: null,
       expandedGroups: new Set(),
       filters: {
@@ -266,11 +265,11 @@ export default {
         search: this.filters.search,
       }
     },
-    processedLogs() {
+    allProcessedLogs() {
       const result = []
       let i = 0
-      while (i < this.logs.length) {
-        const log = this.logs[i]
+      while (i < this.allLogs.length) {
+        const log = this.allLogs[i]
         if (log.contextId && log.entityName === 'Terminal') {
           const group = {
             id: log.contextId,
@@ -280,8 +279,8 @@ export default {
             mainLog: log
           }
           let j = i + 1
-          while (j < this.logs.length && this.logs[j].contextId === log.contextId) {
-            group.logs.push(this.logs[j])
+          while (j < this.allLogs.length && this.allLogs[j].contextId === log.contextId) {
+            group.logs.push(this.allLogs[j])
             j++
           }
           result.push(group)
@@ -292,20 +291,23 @@ export default {
         }
       }
       return result
-    }
+    },
+    processedLogs() {
+      const start = this.filters.page * 20
+      return this.allProcessedLogs.slice(start, start + 20)
+    },
+    totalPages() {
+      return Math.ceil(this.allProcessedLogs.length / 20)
+    },
   },
   watch: {
     filterQuery: {
       deep: true,
       handler() {
-        if (this.filters.page !== 0) {
-          this.filters.page = 0
-        } else {
-          this.load()
-        }
+        this.filters.page = 0
+        this.load()
       }
     },
-    'filters.page'() { this.load() }
   },
   mounted() {
     syncQuery(this, {
@@ -340,17 +342,14 @@ export default {
     },
     load() {
       this.loading = true
-      const params = { 
-        page: this.filters.page, 
-        size: 20,
+      const params = {
         userId: this.filters.userId || null,
         entityName: this.filters.entityName || null,
         action: this.filters.action || null,
         search: this.filters.search || null
       }
       adminAuditService.list(params).then(res => {
-        this.logs = res.data.content
-        this.totalPages = res.data.totalPages
+        this.allLogs = res.data.content ?? res.data
       }).finally(() => {
         this.loading = false
       })

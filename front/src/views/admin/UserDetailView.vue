@@ -267,6 +267,20 @@ export default {
     visibleTabs() {
       return this.tabs.filter(t => (t.id !== 'permissions' && t.id !== 'security') || this.isAdmin)
     },
+    deployments() {
+      const start = this.deploymentsPage * 15
+      return this.allDeployments.slice(start, start + 15)
+    },
+    deploymentsTotalPages() {
+      return Math.ceil(this.allDeployments.length / 15)
+    },
+    auditLogs() {
+      const start = this.auditPage * 20
+      return this.allAuditLogs.slice(start, start + 20)
+    },
+    auditTotalPages() {
+      return Math.ceil(this.allAuditLogs.length / 20)
+    },
     filteredHosts() {
       if (!this.hosts) return []
       return this.hosts.filter(h => {
@@ -288,8 +302,8 @@ export default {
       targetUser: null,
       hosts: [],
       permissions: [],
-      deployments: [],
-      auditLogs: [],
+      allDeployments: [],
+      allAuditLogs: [],
       
       form: { firstName: '', lastName: '', role: 'USER' },
       saving: false,
@@ -309,11 +323,9 @@ export default {
       
       deploymentsLoading: false,
       deploymentsPage: 0,
-      deploymentsTotalPages: 0,
-      
+
       auditLoading: false,
       auditPage: 0,
-      auditTotalPages: 0,
       
       viewedDeployment: null
     }
@@ -362,13 +374,10 @@ export default {
     },
     loadDeployments() {
       this.deploymentsLoading = true
-      deploymentsService.list({ 
-        userId: this.$route.params.id, 
-        page: this.deploymentsPage, 
-        size: 15 
+      deploymentsService.list({
+        userId: this.$route.params.id,
       }).then(res => {
-        this.deployments = res.data.content
-        this.deploymentsTotalPages = res.data.totalPages
+        this.allDeployments = res.data.content ?? res.data
       }).finally(() => {
         this.deploymentsLoading = false
       })
@@ -376,20 +385,17 @@ export default {
     loadAudit() {
       if (!this.isAdmin) return
       this.auditLoading = true
-      adminAuditService.getByUserId(this.$route.params.id, this.auditPage, 20).then(res => {
-        this.auditLogs = res.data.content
-        this.auditTotalPages = res.data.totalPages
+      adminAuditService.getByUserId(this.$route.params.id).then(res => {
+        this.allAuditLogs = res.data.content ?? res.data
       }).finally(() => {
         this.auditLoading = false
       })
     },
     changeDeploymentsPage(delta) {
       this.deploymentsPage += delta
-      this.loadDeployments()
     },
     changeAuditPage(delta) {
       this.auditPage += delta
-      this.loadAudit()
     },
     viewDeployment(dep) {
       this.viewedDeployment = dep

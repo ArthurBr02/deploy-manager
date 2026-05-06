@@ -90,12 +90,10 @@ export default {
   components: { DeploymentTable, DeploymentLogsModal, SearchIcon, DownloadIcon },
   data() {
     return {
-      deployments: [],
+      allDeployments: [],
       hosts: [],
       loading: false,
       logsModal: { deployment: null },
-      total: 1,
-      totalElements: 0,
       stats: null,
       filters: {
         search: '',
@@ -115,6 +113,16 @@ export default {
   },
   computed: {
     ...mapStores(useToastStore),
+    deployments() {
+      const start = this.filters.page * 20
+      return this.allDeployments.slice(start, start + 20)
+    },
+    total() {
+      return Math.ceil(this.allDeployments.length / 20)
+    },
+    totalElements() {
+      return this.allDeployments.length
+    },
     filterQuery() {
       const { search, hostId, status, type, period } = this.filters
       return { search, hostId, status, type, period }
@@ -141,18 +149,11 @@ export default {
     filterQuery: {
       deep: true,
       handler() {
-        if (this.filters.page !== 0) {
-          this.filters.page = 0
-        } else {
-          this.load()
-          this.loadStats()
-        }
+        this.filters.page = 0
+        this.load()
+        this.loadStats()
       }
     },
-    'filters.page'() {
-      this.load()
-      this.loadStats()
-    }
   },
   mounted() {
     syncQuery(this, {
@@ -166,16 +167,14 @@ export default {
   methods: {
     load() {
       this.loading = true
-      const params = { page: this.filters.page, size: 20 }
+      const params = {}
       if (this.filters.search) params.search = this.filters.search
       if (this.filters.hostId) params.hostId = this.filters.hostId
       if (this.filters.status) params.status = this.filters.status
       if (this.filters.type) params.type = this.filters.type
       if (this.filters.period) params.period = this.filters.period
       deploymentsService.list(params).then(res => {
-        this.deployments = res.data.content
-        this.total = res.data.totalPages
-        this.totalElements = res.data.totalElements ?? 0
+        this.allDeployments = res.data.content ?? res.data
       }).finally(() => {
         this.loading = false
       })

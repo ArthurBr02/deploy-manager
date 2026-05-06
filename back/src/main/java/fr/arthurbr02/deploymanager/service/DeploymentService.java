@@ -473,8 +473,8 @@ public class DeploymentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, UUID userId, String search, String status, String type, String period, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    public Page<DeploymentResponse> findAll(User currentUser, UUID hostId, UUID userId, String search, String status, String type, String period, int page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size != null ? size : Integer.MAX_VALUE, Sort.by("createdAt").descending());
         Specification<Deployment> spec = buildSpec(currentUser, hostId, userId, search, status, type, period);
         return deploymentRepository.findAll(spec, pageable).map(d -> DeploymentResponse.from(loadWithJoins(d)));
     }
