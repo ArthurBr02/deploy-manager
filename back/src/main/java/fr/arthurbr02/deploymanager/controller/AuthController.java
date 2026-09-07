@@ -5,6 +5,7 @@ import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.service.AuthService;
 import fr.arthurbr02.deploymanager.service.MfaService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,8 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Connexion")
+    @ApiResponse(responseCode = "200", description = "Connexion réussie ou challenge 2FA requis")
+    @ApiResponse(responseCode = "401", description = "Identifiants invalides")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req,
                                               HttpServletRequest request,
                                               HttpServletResponse response) {
@@ -36,6 +39,8 @@ public class AuthController {
 
     @PostMapping("/verify-mfa")
     @Operation(summary = "Vérifier le code 2FA")
+    @ApiResponse(responseCode = "200", description = "Connexion finalisée")
+    @ApiResponse(responseCode = "401", description = "Challenge ou code 2FA invalide, expiré ou trop de tentatives")
     public ResponseEntity<LoginResponse> verifyMfa(@Valid @RequestBody VerifyMfaRequest req,
                                                    HttpServletRequest request,
                                                    HttpServletResponse response) {
@@ -44,6 +49,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @Operation(summary = "Rafraîchir le token")
+    @ApiResponse(responseCode = "200", description = "Nouveau token d'accès")
+    @ApiResponse(responseCode = "401", description = "Cookie refresh_token absent, expiré ou invalide")
     public ResponseEntity<RefreshResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.refresh(request, response));
     }

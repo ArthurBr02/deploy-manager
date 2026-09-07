@@ -391,12 +391,12 @@ deploy-manager/
 ### Authentification
 | Méthode | Route | Description |
 |---|---|---|
-| `POST` | `/api/auth/login` | Connexion |
-| `POST` | `/api/auth/refresh` | Rafraîchir le token |
+| `POST` | `/api/auth/login` | Connexion (401 si identifiants invalides) |
+| `POST` | `/api/auth/refresh` | Rafraîchir le token (401 si le cookie `refresh_token` est absent, expiré ou invalide) |
 | `POST` | `/api/auth/logout` | Déconnexion |
 | `POST` | `/api/auth/forgot-password` | Demande de réinitialisation de mot de passe |
 | `POST` | `/api/auth/reset-password` | Réinitialisation du mot de passe |
-| `POST` | `/api/auth/verify-mfa` | Vérifier le code 2FA et finaliser la connexion |
+| `POST` | `/api/auth/verify-mfa` | Vérifier le code 2FA et finaliser la connexion (401 si challenge/code invalide, expiré ou trop de tentatives) |
 | `GET` | `/api/auth/trusted-devices` | Lister mes appareils de confiance |
 | `DELETE` | `/api/auth/trusted-devices/{id}` | Révoquer un appareil de confiance |
 

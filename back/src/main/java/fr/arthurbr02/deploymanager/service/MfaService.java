@@ -6,6 +6,7 @@ import fr.arthurbr02.deploymanager.dto.auth.VerifyMfaRequest;
 import fr.arthurbr02.deploymanager.entity.MfaCode;
 import fr.arthurbr02.deploymanager.entity.TrustedDevice;
 import fr.arthurbr02.deploymanager.entity.User;
+import fr.arthurbr02.deploymanager.exception.UnauthorizedException;
 import fr.arthurbr02.deploymanager.repository.MfaCodeRepository;
 import fr.arthurbr02.deploymanager.repository.TrustedDeviceRepository;
 import jakarta.servlet.http.Cookie;
@@ -39,6 +40,7 @@ import java.util.UUID;
 public class MfaService {
 
     private final MfaCodeRepository mfaCodeRepository;
+    private final MfaAttemptStore attemptStore;
     private final TrustedDeviceRepository trustedDeviceRepository;
     private final AppConfigService configService;
     private final MailService mailService;
@@ -87,27 +89,19 @@ public class MfaService {
     @Transactional
     public UUID verifyMfaAndGetUserId(VerifyMfaRequest req, HttpServletRequest httpReq, HttpServletResponse httpResp) {
         MfaCode mfaCode = mfaCodeRepository.findByChallengeId(req.challengeId())
-                .orElseThrow(() -> new RuntimeException("Challenge invalide ou expiré"));
+                .orElseThrow(() -> new UnauthorizedException("Challenge invalide ou expiré"));
 
         if (mfaCode.getExpiresAt().isBefore(Instant.now())) {
-            mfaCodeRepository.delete(mfaCode);
-            throw new RuntimeException("Code expiré, veuillez vous reconnecter");
-        }
-
-        if (mfaCode.getAttempts() >= 5) {
-            mfaCodeRepository.delete(mfaCode);
-            throw new RuntimeException("Trop de tentatives, veuillez vous reconnecter");
+            attemptStore.discard(mfaCode.getId());
+            throw new UnauthorizedException("Code expiré, veuillez vous reconnecter");
         }
 
         if (!passwordEncoder.matches(req.code(), mfaCode.getCodeHash())) {
-            mfaCode.setAttempts(mfaCode.getAttempts() + 1);
-            if (mfaCode.getAttempts() >= 5) {
-                mfaCodeRepository.delete(mfaCode);
-                throw new RuntimeException("Trop de tentatives, veuillez vous reconnecter");
+            int remaining = attemptStore.recordFailedAttempt(mfaCode.getId());
+            if (remaining <= 0) {
+                throw new UnauthorizedException("Trop de tentatives, veuillez vous reconnecter");
             }
-            mfaCodeRepository.save(mfaCode);
-            int remaining = 5 - mfaCode.getAttempts();
-            throw new RuntimeException("Code incorrect. " + remaining + " tentative(s) restante(s)");
+            throw new UnauthorizedException("Code incorrect. " + remaining + " tentative(s) restante(s)");
         }
 
         UUID userId = mfaCode.getUserId();
