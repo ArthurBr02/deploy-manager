@@ -206,3 +206,6 @@ Cochez les cases au fur et à mesure de l'avancement (`[x]`).
 - [x] Frontend : `ProfileView.vue` — section "Appareils de confiance" avec révocation
 - [x] Frontend : `UserDetailView.vue` — onglet "Sécurité" avec liste et révocation des appareils (admin)
 - [x] Documentation : `README.md` et `doc/progress.md` mis à jour
+- [x] Correctif logs : `POST /auth/refresh` sans cookie valide renvoie désormais 401 via `UnauthorizedException` (log DEBUG sans stacktrace) au lieu de 400 avec une stacktrace ERROR — supprime le bruit dans les logs système (logcheck).
+- [x] Correctif logs (suite) : les échecs d'authentification de `POST /auth/login` et `POST /auth/verify-mfa` (identifiants invalides, challenge/code 2FA invalide ou expiré, trop de tentatives) renvoient également 401 sans stacktrace ERROR ; l'intercepteur axios exclut désormais `/auth/login`, `/auth/verify-mfa` et `/auth/refresh` de la relance automatique sur 401.
+- [x] Correctif 2FA : le compteur de tentatives n'était jamais persisté (le `throw` annulait la transaction), la limite de 5 essais ne se déclenchait donc jamais. Les écritures d'échec passent par `MfaAttemptStore` (`REQUIRES_NEW`) avec incrément atomique en base (`MfaCodeRepository.incrementAttempts`).

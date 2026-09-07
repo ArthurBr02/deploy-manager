@@ -2,6 +2,7 @@ package fr.arthurbr02.deploymanager.service;
 
 import fr.arthurbr02.deploymanager.dto.auth.*;
 import fr.arthurbr02.deploymanager.exception.ForbiddenException;
+import fr.arthurbr02.deploymanager.exception.UnauthorizedException;
 import fr.arthurbr02.deploymanager.entity.PasswordResetToken;
 import fr.arthurbr02.deploymanager.entity.User;
 import fr.arthurbr02.deploymanager.repository.PasswordResetTokenRepository;
@@ -53,9 +54,9 @@ public class AuthService {
     @Transactional
     public AuthResponse login(LoginRequest req, HttpServletRequest request, HttpServletResponse response) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(req.email())
-                .orElseThrow(() -> new RuntimeException("Identifiants invalides"));
+                .orElseThrow(() -> new UnauthorizedException("Identifiants invalides"));
         if (!passwordEncoder.matches(req.password(), user.getPassword())) {
-            throw new RuntimeException("Identifiants invalides");
+            throw new UnauthorizedException("Identifiants invalides");
         }
         if (mfaService.isMfaRequired(user.getId(), request)) {
             return mfaService.initiateMfa(user);
@@ -67,25 +68,25 @@ public class AuthService {
     public LoginResponse verifyMfaAndLogin(VerifyMfaRequest req, HttpServletRequest request, HttpServletResponse response) {
         UUID userId = mfaService.verifyMfaAndGetUserId(req, request, response);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+                .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable"));
         return buildLoginResponse(user, response);
     }
 
     @Transactional
     public RefreshResponse refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshCookie(request);
-        if (refreshToken == null) throw new RuntimeException("Pas de refresh token");
+        if (refreshToken == null) throw new UnauthorizedException("Pas de refresh token");
         try {
             Claims claims = jwtUtil.validateRefreshToken(refreshToken);
             UUID userId = UUID.fromString(claims.getSubject());
             User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+                    .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable"));
             String newAccess = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
             String newRefresh = jwtUtil.generateRefreshToken(user.getId());
             setRefreshCookie(response, newRefresh);
             return new RefreshResponse(newAccess);
         } catch (JwtException e) {
-            throw new RuntimeException("Refresh token invalide");
+            throw new UnauthorizedException("Refresh token invalide");
         }
     }
 
